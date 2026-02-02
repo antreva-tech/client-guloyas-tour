@@ -19,6 +19,8 @@ interface ProductInfo {
   line: string;
   price: number;
   currency: string;
+  /** Optional children price; used to show Adult/Kid label per line. */
+  childPrice?: number | null;
 }
 
 /**
@@ -2002,9 +2004,15 @@ function InvoiceDetailModal({
                       <p className={`text-jet font-semibold text-sm ${invoice.isVoided ? "line-through text-jet/50" : ""}`}>
                         RD$ {item.total.toLocaleString()}
                       </p>
-                      <p className="text-jet/50 text-xs">
-                        {item.quantity} × RD$ {item.tour?.price?.toLocaleString() || "—"}
-                      </p>
+                      {(() => {
+                        const unitPrice = item.quantity ? Math.round(item.total / item.quantity) : 0;
+                        const isKid = item.tour?.childPrice != null && unitPrice === item.tour.childPrice;
+                        return (
+                          <p className={`text-xs ${isKid ? "text-amber-600" : "text-jet/50"}`}>
+                            {item.quantity} × RD$ {unitPrice.toLocaleString()} ({isKid ? "Kid" : "Adult"})
+                          </p>
+                        );
+                      })()}
                     </div>
                   </div>
                   {/* Depósito (paid upfront) and Lo que debe (amount still owed) */}
@@ -2321,27 +2329,31 @@ function InvoiceDetailModal({
               </tr>
             </thead>
             <tbody>
-              {invoice.items.map((item, index) => (
-                <tr key={index}>
-                  <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb" }}>
-                    <div style={{ fontWeight: 500, color: "#111", fontSize: "12px" }}>
-                      {item.tour?.name || "Producto"}
-                    </div>
-                    <div style={{ fontSize: "10px", color: "#007C92" }}>
-                      {item.tour?.line || ""}
-                    </div>
-                  </td>
-                  <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "center", color: "#111", fontSize: "12px" }}>
-                    {item.quantity}
-                  </td>
-                  <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "right", color: "#111", fontSize: "12px" }}>
-                    RD$ {(item.tour?.price || 0).toLocaleString()}
-                  </td>
-                  <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "right", fontWeight: 600, color: "#111", fontSize: "12px" }}>
-                    RD$ {item.total.toLocaleString()}
-                  </td>
-                </tr>
-              ))}
+              {invoice.items.map((item, index) => {
+                const unitPrice = item.quantity ? Math.round(item.total / item.quantity) : 0;
+                const isKid = item.tour?.childPrice != null && unitPrice === item.tour.childPrice;
+                return (
+                  <tr key={index}>
+                    <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb" }}>
+                      <div style={{ fontWeight: 500, color: "#111", fontSize: "12px" }}>
+                        {item.tour?.name || "Producto"}
+                      </div>
+                      <div style={{ fontSize: "10px", color: "#007C92" }}>
+                        {item.tour?.line || ""}
+                      </div>
+                    </td>
+                    <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "center", color: "#111", fontSize: "12px" }}>
+                      {item.quantity}
+                    </td>
+                    <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "right", color: isKid ? "#b45309" : "#111", fontSize: "12px" }}>
+                      RD$ {unitPrice.toLocaleString()} ({isKid ? "Kid" : "Adult"})
+                    </td>
+                    <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "right", fontWeight: 600, color: "#111", fontSize: "12px" }}>
+                      RD$ {item.total.toLocaleString()}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 

@@ -44,6 +44,8 @@ interface SaleItem {
   total: number;
   abono?: number;
   pendiente?: number;
+  /** "kid" when unitPrice matches tour childPrice; "adult" otherwise. Used for display. */
+  priceLabel?: "adult" | "kid";
 }
 
 /**
@@ -1890,13 +1892,24 @@ function EditInvoiceModal({
                       </div>
                       <div>
                         <label className="block text-xs text-jet/60 mb-0.5">Precio unit. (RD$)</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={row.unitPrice}
-                          onChange={(e) => updateUnitPrice(index, parseInt(e.target.value) || 0)}
-                          className="w-full bg-white border border-gold-200/50 rounded px-2 py-1.5 text-jet text-sm"
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            value={row.unitPrice}
+                            onChange={(e) => updateUnitPrice(index, parseInt(e.target.value) || 0)}
+                            className="w-full bg-white border border-gold-200/50 rounded px-2 py-1.5 text-jet text-sm"
+                          />
+                          {(() => {
+                            const p = products.find((x) => x.id === row.productId) as ProductWithCatalog | undefined;
+                            const isKid = p?.childPrice != null && row.unitPrice === p.childPrice;
+                            return (
+                              <span className={`text-xs font-medium flex-shrink-0 ${isKid ? "text-amber-600" : "text-jet/70"}`}>
+                                ({isKid ? "Kid" : "Adult"})
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs text-jet/60 mb-0.5">Abono</label>
@@ -1944,11 +1957,18 @@ function EditInvoiceModal({
 }
 
 /** Product type with optional catalog fields for sale form. */
-type ProductWithCatalog = Product & { sequence?: number; lowSeatsThreshold?: number | null };
+type ProductWithCatalog = Product & { sequence?: number; lowSeatsThreshold?: number | null; childPrice?: number | null };
+
+/** Option for product picker: one row per price type (adult and/or kid). */
+interface ProductOption {
+  product: ProductWithCatalog;
+  price: number;
+  priceLabel: "adult" | "kid";
+}
 
 /**
  * Reusable product dropdown panel for sale form and edit-invoice modal.
- * Renders search input and scrollable list of product options.
+ * Renders search input and scrollable list of product options (adult and kid when childPrice set).
  */
 function ProductDropdownPanel({
   searchTerm,
@@ -1960,7 +1980,7 @@ function ProductDropdownPanel({
 }: {
   searchTerm: string;
   onSearchChange: (v: string) => void;
-  options: Array<{ product: ProductWithCatalog; price: number }>;
+  options: ProductOption[];
   existingItems: Array<{ productId: string; unitPrice: number }>;
   onSelect: (productId: string, price: number) => void;
   UNLIMITED_STOCK: number;
@@ -1981,12 +2001,13 @@ function ProductDropdownPanel({
         {options.length === 0 ? (
           <p className="px-3 py-4 text-jet/50 text-sm text-center">No se encontraron productos</p>
         ) : (
-          options.map(({ product: p, price }) => {
+          options.map(({ product: p, price, priceLabel }) => {
             const alreadyAdded = existingItems.some((i) => i.productId === p.id && i.unitPrice === price);
             const outOfStock = p.stock === 0;
+            const isKid = priceLabel === "kid";
             return (
               <button
-                key={p.id}
+                key={`${p.id}-${price}-${priceLabel}`}
                 type="button"
                 disabled={outOfStock}
                 onClick={() => onSelect(p.id, price)}
@@ -2000,8 +2021,8 @@ function ProductDropdownPanel({
                     <p className="text-aqua-700 text-xs">{p.line}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-semibold text-sm text-jet">
-                      RD$ {price.toLocaleString()}
+                    <p className={`font-semibold text-sm ${isKid ? "text-amber-600" : "text-jet"}`}>
+                      RD$ {price.toLocaleString()} <span className="font-normal text-jet/70">({isKid ? "Kid" : "Adult"})</span>
                     </p>
                     <p className={`text-xs ${outOfStock ? "text-danger" : "text-jet/50"}`}>
                       {outOfStock ? "Sin plazas" : p.stock === UNLIMITED_STOCK ? "Siempre disponible" : `Plazas: ${p.stock}`}
@@ -2021,15 +2042,22 @@ function ProductDropdownPanel({
 }
 
 /**
- * Builds sorted product options for dropdowns. Sorted by sequence, then name.
+ * Builds sorted product options for dropdowns: one option for adult price, and one for kid price when childPrice is set.
+ * Sorted by sequence, then name; adult before kid per product.
  */
-function buildProductOptions(
-  products: ProductWithCatalog[]
-): Array<{ product: ProductWithCatalog; price: number }> {
+function buildProductOptions(products: ProductWithCatalog[]): ProductOption[] {
   const seq = (p: ProductWithCatalog) => p.sequence ?? 0;
-  return [...products]
-    .sort((a, b) => seq(a) - seq(b) || a.name.localeCompare(b.name) || a.line.localeCompare(b.line))
-    .map((p) => ({ product: p, price: p.price }));
+  const sorted = [...products].sort(
+    (a, b) => seq(a) - seq(b) || a.name.localeCompare(b.name) || a.line.localeCompare(b.line)
+  );
+  const options: ProductOption[] = [];
+  for (const p of sorted) {
+    options.push({ product: p, price: p.price, priceLabel: "adult" });
+    if (p.childPrice != null && p.childPrice > 0) {
+      options.push({ product: p, price: p.childPrice, priceLabel: "kid" });
+    }
+  }
+  return options;
 }
 
 /**
@@ -2131,6 +2159,9 @@ function SaleForm({
         );
       }
     } else {
+      const productWithChild = product as ProductWithCatalog;
+      const priceLabel: "adult" | "kid" =
+        productWithChild.childPrice != null && price === productWithChild.childPrice ? "kid" : "adult";
       setItems([
         ...items,
         {
@@ -2140,6 +2171,7 @@ function SaleForm({
           quantity: 1,
           unitPrice: price,
           total: price,
+          priceLabel,
           abono: 0,
           pendiente: price, // total - abono
         },
@@ -2444,13 +2476,24 @@ function SaleForm({
                       </div>
                       <div>
                         <label className="block text-xs text-jet/60 mb-0.5">Precio unit. (RD$)</label>
-                        <input
-                          type="number"
-                          value={item.unitPrice}
-                          onChange={(e) => handleUpdateUnitPrice(item.productId, parseInt(e.target.value) || 0)}
-                          className="w-20 bg-white border border-gold-200/50 rounded px-2 py-1.5 text-jet text-sm focus:outline-none focus:ring-1 focus:ring-aqua-500"
-                          min="0"
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            value={item.unitPrice}
+                            onChange={(e) => handleUpdateUnitPrice(item.productId, parseInt(e.target.value) || 0)}
+                            className="w-20 bg-white border border-gold-200/50 rounded px-2 py-1.5 text-jet text-sm focus:outline-none focus:ring-1 focus:ring-aqua-500"
+                            min="0"
+                          />
+                          {(() => {
+                            const p = product as ProductWithCatalog | undefined;
+                            const isKid = item.priceLabel === "kid" || (p?.childPrice != null && item.unitPrice === p.childPrice);
+                            return (
+                              <span className={`text-xs font-medium ${isKid ? "text-amber-600" : "text-jet/70"}`}>
+                                ({isKid ? "Kid" : "Adult"})
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
                       <p className="text-jet font-semibold text-sm self-end pb-1">
                         Total: RD$ {item.total.toLocaleString()}
@@ -2770,21 +2813,26 @@ function Invoice({
             </tr>
           </thead>
           <tbody>
-            {sale.items.map((item, index) => (
-              <tr key={index} className="border-b border-gold-200/30">
-                <td className="py-3">
-                  <p className="text-jet font-medium">{item.productName}</p>
-                  <p className="text-aqua-700 text-xs">{item.productLine}</p>
-                </td>
-                <td className="py-3 text-center text-jet">{item.quantity}</td>
-                <td className="py-3 text-right text-jet/70">
-                  RD$ {item.unitPrice.toLocaleString()}
-                </td>
-                <td className="py-3 text-right text-jet font-medium">
-                  RD$ {item.total.toLocaleString()}
-                </td>
-              </tr>
-            ))}
+            {sale.items.map((item, index) => {
+              const isKid = item.priceLabel === "kid";
+              return (
+                <tr key={index} className="border-b border-gold-200/30">
+                  <td className="py-3">
+                    <p className="text-jet font-medium">{item.productName}</p>
+                    <p className="text-aqua-700 text-xs">{item.productLine}</p>
+                  </td>
+                  <td className="py-3 text-center text-jet">{item.quantity}</td>
+                  <td className="py-3 text-right">
+                    <span className={isKid ? "text-amber-600" : "text-jet/70"}>
+                      RD$ {item.unitPrice.toLocaleString()} ({isKid ? "Kid" : "Adult"})
+                    </span>
+                  </td>
+                  <td className="py-3 text-right text-jet font-medium">
+                    RD$ {item.total.toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr>

@@ -20,6 +20,8 @@ export interface Product {
   description: string;
   price: number;
   currency: string;
+  /** Optional children price; shown next to adult price when set. */
+  childPrice?: number | null;
   imageUrl?: string | null;
   /** Multiple tour images; card shows swipeable gallery. Falls back to imageUrl if empty. */
   imageUrls?: string[] | null;
@@ -281,12 +283,17 @@ export function ProductCard({
           )}
         </div>
 
-        {/* Price and CTA */}
+        {/* Price and CTA: adult price; kid price when set (different color, labeled) */}
         <div className="flex items-center justify-between gap-2">
-          <div>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className={`text-xl sm:text-2xl font-bold ${isSoldOut ? "text-brand-muted" : "text-brand-ink"}`}>
               {product.currency} {product.price.toLocaleString()}
             </span>
+            {product.childPrice != null && product.childPrice > 0 && (
+              <span className={`text-sm font-medium ${isSoldOut ? "text-brand-muted" : "text-amber-600"}`}>
+                Kid {product.currency} {product.childPrice.toLocaleString()}
+              </span>
+            )}
           </div>
           {isSoldOut ? (
             <button
