@@ -45,12 +45,6 @@ export function Hero() {
             <div className="w-12 sm:w-20 h-px bg-gradient-to-l from-transparent to-brand-gold/50" />
           </div>
 
-          {/* Headline */}
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-night-text mb-4 sm:mb-6 leading-tight">
-            {t.hero.headline.split(" ").slice(0, -1).join(" ")}{" "}
-            <span className="text-gradient-gold">{t.hero.headline.split(" ").pop()}</span>
-          </h1>
-
           {/* Subheadline */}
           <p className="text-base sm:text-xl text-night-muted max-w-2xl mx-auto mb-8 sm:mb-10 px-2 leading-relaxed">
             {t.hero.subheadline}

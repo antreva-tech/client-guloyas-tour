@@ -30,7 +30,7 @@ export async function GET(
 
     const sales = await db.sale.findMany({
       where: { batchId, ...supervisorFilter },
-      include: { product: true },
+      include: { tour: true },
       orderBy: { createdAt: "asc" },
     });
 
@@ -52,7 +52,7 @@ export async function GET(
  * PATCH /api/sales/[batchId]
  * Updates batch items (edit invoice: add/update/remove lines, change quantity/price).
  * Requires admin authentication.
- * Body: { items: [{ id?: string, productId, quantity, total, abono?, pendiente? }] }.
+ * Body: { items: [{ id?: string, tourId, quantity, total, abono?, pendiente? }] }.
  * - id present: update existing sale row (adjust product stock/sold by delta).
  * - id absent: add new sale row (decrement product stock / increment sold).
  * - Existing sale not in items: remove row (restore product stock / decrement sold).
@@ -91,7 +91,7 @@ export async function PATCH(
       where: { batchId, ...supervisorFilter },
       select: {
         id: true,
-        productId: true,
+        tourId: true,
         quantity: true,
         total: true,
         abono: true,
@@ -119,12 +119,12 @@ export async function PATCH(
         if (item.id && currentById.has(item.id)) {
           const existing = currentById.get(item.id)!;
           const deltaQty = item.quantity - existing.quantity;
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
+          const product = await tx.tour.findUnique({
+            where: { id: item.tourId },
             select: { stock: true },
           });
           if (!product) {
-            throw new Error(`Product not found: ${item.productId}`);
+            throw new Error(`Product not found: ${item.tourId}`);
           }
           if (product.stock !== -1 && deltaQty > 0 && product.stock < deltaQty) {
             throw new Error(`Insufficient stock for update`);
@@ -141,8 +141,8 @@ export async function PATCH(
           });
 
           if (product.stock !== -1 && deltaQty !== 0) {
-            await tx.product.update({
-              where: { id: item.productId },
+            await tx.tour.update({
+              where: { id: item.tourId },
               data: {
                 stock: { [deltaQty > 0 ? "decrement" : "increment"]: Math.abs(deltaQty) },
                 sold: { [deltaQty > 0 ? "increment" : "decrement"]: Math.abs(deltaQty) },
@@ -153,15 +153,15 @@ export async function PATCH(
         }
 
         if (!item.id) {
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
+          const product = await tx.tour.findUnique({
+            where: { id: item.tourId },
             select: { stock: true },
           });
           if (!product) {
-            throw new Error(`Product not found: ${item.productId}`);
+            throw new Error(`Product not found: ${item.tourId}`);
           }
           if (product.stock !== -1 && product.stock < item.quantity) {
-            throw new Error(`Insufficient stock for ${item.productId}`);
+            throw new Error(`Insufficient stock for ${item.tourId}`);
           }
 
           const template = await tx.sale.findFirst({
@@ -173,7 +173,6 @@ export async function PATCH(
               provincia: true,
               municipio: true,
               customerAddress: true,
-              lugarTrabajo: true,
               notes: true,
               fechaEntrega: true,
               fechaVisita: true,
@@ -187,7 +186,7 @@ export async function PATCH(
           await tx.sale.create({
             data: {
               batchId,
-              productId: item.productId,
+              tourId: item.tourId,
               quantity: item.quantity,
               total: item.total,
               abono: item.abono ?? null,
@@ -197,8 +196,8 @@ export async function PATCH(
           });
 
           if (product.stock !== -1) {
-            await tx.product.update({
-              where: { id: item.productId },
+            await tx.tour.update({
+              where: { id: item.tourId },
               data: {
                 stock: { decrement: item.quantity },
                 sold: { increment: item.quantity },
@@ -210,13 +209,13 @@ export async function PATCH(
 
       for (const sale of currentSales) {
         if (!idsInBody.has(sale.id)) {
-          const product = await tx.product.findUnique({
-            where: { id: sale.productId },
+          const product = await tx.tour.findUnique({
+            where: { id: sale.tourId },
             select: { stock: true },
           });
           if (product?.stock !== -1) {
-            await tx.product.update({
-              where: { id: sale.productId },
+            await tx.tour.update({
+              where: { id: sale.tourId },
               data: {
                 stock: { increment: sale.quantity },
                 sold: { decrement: sale.quantity },

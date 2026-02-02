@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import Image from "next/image";
 
 /** Character limit before description becomes expandable. */
 const DESCRIPTION_EXPAND_THRESHOLD = 150;
 
+/** Minimum swipe distance (px) to change slide. */
+const SWIPE_THRESHOLD = 50;
+
 /**
  * Product data interface for catalog items (tours/experiences).
- * Compatible with Prisma Product model (imageUrl can be null).
+ * Compatible with Prisma Product model (imageUrl/imageUrls).
  */
 export interface Product {
   id: string;
@@ -18,6 +21,8 @@ export interface Product {
   price: number;
   currency: string;
   imageUrl?: string | null;
+  /** Multiple tour images; card shows swipeable gallery. Falls back to imageUrl if empty. */
+  imageUrls?: string[] | null;
   stock?: number;
   /** Per-tour low-seats threshold; null = use default or hide badge. */
   lowSeatsThreshold?: number | null;
@@ -66,12 +71,60 @@ interface ProductCardProps {
  * @param defaultLowSeatsThreshold - Default threshold when product.lowSeatsThreshold is null.
  * @returns The product card element.
  */
+
+/** Normalizes product images to an array (imageUrls or single imageUrl fallback). */
+function getProductImages(product: Product): string[] {
+  if (product.imageUrls?.length) return product.imageUrls;
+  if (product.imageUrl) return [product.imageUrl];
+  return [];
+}
+
 export function ProductCard({
   product,
   onContact,
   defaultLowSeatsThreshold,
 }: ProductCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+
+  const images = getProductImages(product);
+  const hasMultipleImages = images.length > 1;
+
+  const goTo = useCallback(
+    (index: number) => {
+      setImageIndex((prev) => {
+        if (index < 0) return images.length - 1;
+        if (index >= images.length) return 0;
+        return index;
+      });
+    },
+    [images.length]
+  );
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (touchStartX.current == null || !hasMultipleImages) return;
+      const endX = e.changedTouches[0].clientX;
+      const diff = touchStartX.current - endX;
+      touchStartX.current = null;
+      if (Math.abs(diff) >= SWIPE_THRESHOLD) {
+        const delta = diff > 0 ? 1 : -1;
+        setImageIndex((prev) => {
+          const next = prev + delta;
+          if (next < 0) return images.length - 1;
+          if (next >= images.length) return 0;
+          return next;
+        });
+      }
+    },
+    [hasMultipleImages, images.length]
+  );
+
   const stockStatus = getSeatsStatus(
     product.stock,
     product.lowSeatsThreshold,
@@ -92,18 +145,66 @@ export function ProductCard({
           : "border-brand-sand/50 hover:border-brand-sunset/50 hover:shadow-lg"
       }`}
     >
-      {/* Product image */}
-      <div className="aspect-[4/3] sm:aspect-square bg-brand-canvas relative overflow-hidden flex items-center justify-center">
-        {product.imageUrl ? (
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className={`object-contain p-4 transition-transform duration-500 ${
-              isSoldOut ? "grayscale" : "group-hover:scale-105"
-            }`}
-          />
+      {/* Product image(s) - swipeable when multiple */}
+      <div
+        className="aspect-[4/3] sm:aspect-square bg-brand-canvas relative overflow-hidden flex items-center justify-center touch-pan-y select-none"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {images.length > 0 ? (
+          <>
+            {images.map((url, i) => (
+              <div
+                key={url}
+                className="absolute inset-0 transition-opacity duration-300"
+                style={{ opacity: i === imageIndex ? 1 : 0, pointerEvents: i === imageIndex ? "auto" : "none" }}
+              >
+                <Image
+                  src={url}
+                  alt={`${product.name}${images.length > 1 ? ` (${i + 1}/${images.length})` : ""}`}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className={`object-contain p-4 transition-transform duration-500 ${
+                    isSoldOut ? "grayscale" : "group-hover:scale-105"
+                  }`}
+                />
+              </div>
+            ))}
+            {/* Dots and prev/next when multiple images */}
+            {hasMultipleImages && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); goTo(imageIndex - 1); }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center text-lg leading-none z-10"
+                  aria-label="Imagen anterior"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); goTo(imageIndex + 1); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center text-lg leading-none z-10"
+                  aria-label="Siguiente imagen"
+                >
+                  ›
+                </button>
+                <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">
+                  {images.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setImageIndex(i); }}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        i === imageIndex ? "bg-white" : "bg-white/50 hover:bg-white/70"
+                      }`}
+                      aria-label={`Imagen ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
         ) : (
           <div className="flex items-center justify-center bg-gradient-to-br from-brand-sand/30 to-brand-canvas w-full h-full">
             <div className="text-center">

@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 
 /**
  * GET /api/whatsapp/messages
- * Lists WhatsApp message log entries with optional filters: batchId, productId, customerPhone, limit.
+ * Lists WhatsApp message log entries with optional filters: batchId, tourId, customerPhone, limit.
  * Requires supervisor or above.
  */
 export async function GET(request: NextRequest) {
@@ -14,14 +14,14 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const batchId = searchParams.get("batchId") ?? undefined;
-    const productId = searchParams.get("productId") ?? undefined;
+    const tourId = searchParams.get("tourId") ?? undefined;
     const customerPhone = searchParams.get("customerPhone") ?? undefined;
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10) || 50));
 
     const list = await db.whatsAppMessageLog.findMany({
       where: {
         ...(batchId && { batchId }),
-        ...(productId && { productId }),
+        ...(tourId && { tourId }),
         ...(customerPhone && { customerPhone: { contains: customerPhone } }),
       },
       orderBy: { createdAt: "desc" },

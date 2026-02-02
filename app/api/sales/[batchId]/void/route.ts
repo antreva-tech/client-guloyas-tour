@@ -59,19 +59,19 @@ export async function POST(
 
     await db.$transaction(async (tx) => {
       for (const sale of sales) {
-        const product = await tx.product.findUnique({
-          where: { id: sale.productId },
+        const tour = await tx.tour.findUnique({
+          where: { id: sale.tourId },
         });
 
-        if (!product) {
-          throw new Error(`Product not found: ${sale.productId}`);
+        if (!tour) {
+          throw new Error(`Tour not found: ${sale.tourId}`);
         }
 
-        const nextSold = Math.max(product.sold - sale.quantity, 0);
-        const wasUnlimited = product.stock === -1;
+        const nextSold = Math.max(tour.sold - sale.quantity, 0);
+        const wasUnlimited = tour.stock === -1;
 
-        await tx.product.update({
-          where: { id: sale.productId },
+        await tx.tour.update({
+          where: { id: sale.tourId },
           data: wasUnlimited
             ? { sold: { set: nextSold } }
             : { stock: { increment: sale.quantity }, sold: { set: nextSold } },

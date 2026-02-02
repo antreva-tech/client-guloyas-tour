@@ -339,7 +339,7 @@ function ExportImportSection() {
       <div>
         <h3 className="text-sm font-medium text-jet/80 mb-2">Importar ventas desde CSV (Google Sheets, etc.)</h3>
         <p className="text-jet/50 text-xs mb-3">
-          El CSV debe tener encabezados. Requeridas: producto, cantidad, total. Opcionales (igual que la venta): abono, pendiente, fecha/fecha entrega/fecha visita, cliente, teléfono, cédula, provincia, municipio, dirección, lugar de trabajo, supervisor, vendedor, pagado, nota.
+          El CSV debe tener encabezados. Requeridas: producto, cantidad, total. Opcionales (igual que la venta): abono, pendiente, fecha/fecha entrega/fecha visita, cliente, teléfono, cédula, provincia, municipio, dirección, supervisor, vendedor, pagado, nota.
         </p>
         <form onSubmit={handleImportSubmit} className="flex flex-wrap items-end gap-3">
           <div>

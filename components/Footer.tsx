@@ -27,13 +27,13 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
           {/* Brand - full width on mobile */}
           <div className="col-span-2 md:col-span-1 text-center md:text-left mb-4 md:mb-0">
-            <div className="inline-block bg-white/95 rounded-lg px-3 py-1.5 mb-3 sm:mb-4">
+            <div className="inline-block mb-3 sm:mb-4">
               <Image
                 src={brandConfig.logoPath}
                 alt={brandConfig.brandName}
-                width={100}
-                height={32}
-                className="h-8 sm:h-10 w-auto"
+                width={480}
+                height={192}
+                className="h-28 sm:h-36 md:h-44 lg:h-52 w-auto object-contain"
               />
             </div>
             <p className="text-night-muted text-xs sm:text-sm">

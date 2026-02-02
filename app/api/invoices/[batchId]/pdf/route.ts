@@ -30,7 +30,7 @@ export async function GET(
 
     const sales = await db.sale.findMany({
       where: { batchId, voidedAt: null, ...supervisorFilter },
-      include: { product: true },
+      include: { tour: true },
       orderBy: { createdAt: "asc" },
     });
     if (sales.length === 0) {

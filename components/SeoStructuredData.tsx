@@ -140,7 +140,8 @@ export function SeoStructuredData({ baseUrl, products = [], faq = [] }: SeoStruc
    * Product + TouristTrip schema for tour/experience items (AI entity depth).
    */
   const productSchemas = products.map((p) => {
-    const imageUrl = p.imageUrl ? toAbsoluteImageUrl(p.imageUrl, siteUrl) : logoUrl;
+    const primaryImage = (p as { imageUrls?: string[] }).imageUrls?.[0] ?? (p as { imageUrl?: string | null }).imageUrl;
+    const imageUrl = primaryImage ? toAbsoluteImageUrl(primaryImage, siteUrl) : logoUrl;
     const availability =
       p.stock === undefined || p.stock === null || p.stock === -1 || p.stock > 0
         ? "https://schema.org/InStock"

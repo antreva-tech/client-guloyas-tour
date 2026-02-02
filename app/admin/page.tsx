@@ -9,7 +9,7 @@ import { getAllProducts } from "@/lib/products";
 import { getAdminSettings } from "@/lib/settings";
 import { AdminDashboard } from "./AdminDashboard";
 import { SupportResetPanel } from "@/components/SupportResetPanel";
-import type { Product } from "@prisma/client";
+import type { Product } from "@/lib/products";
 
 /** Force dynamic rendering to ensure fresh cookie reads. */
 export const dynamic = "force-dynamic";

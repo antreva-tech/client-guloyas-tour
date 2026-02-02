@@ -39,10 +39,22 @@ export function getWhatsAppUrl(number: string, message: string): string {
   return text ? `https://wa.me/${clean}?text=${text}` : `https://wa.me/${clean}`;
 }
 
+/** Spanish tourism tagline used when env tagline is generic (e.g. "Premium Products"). */
+const TOURISM_TAGLINE_ES = "Tours y Experiencias";
+
+/** Normalizes tagline to tourism/experience copy in Spanish when it looks like a generic template. */
+function normalizeTagline(raw: string | undefined): string {
+  const value = raw?.trim() ?? TOURISM_TAGLINE_ES;
+  if (!value) return TOURISM_TAGLINE_ES;
+  const lower = value.toLowerCase();
+  if (lower.includes("premium") && lower.includes("product")) return TOURISM_TAGLINE_ES;
+  return value;
+}
+
 /** Brand config singleton (env vars evaluated at module load). */
 export const brandConfig: BrandConfig = {
   brandName: process.env.NEXT_PUBLIC_BRAND_NAME ?? "Your Brand",
-  tagline: process.env.NEXT_PUBLIC_BRAND_TAGLINE ?? "Tours y Experiencias",
+  tagline: normalizeTagline(process.env.NEXT_PUBLIC_BRAND_TAGLINE) || TOURISM_TAGLINE_ES,
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com",
   logoPath: process.env.NEXT_PUBLIC_LOGO_PATH ?? "/logo.png",
   ogImagePath: process.env.NEXT_PUBLIC_OG_IMAGE ?? "",

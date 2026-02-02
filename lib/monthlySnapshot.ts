@@ -8,16 +8,16 @@ export async function createMonthlySnapshot(now = new Date()) {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
-  const products = await db.product.findMany({
+  const tours = await db.tour.findMany({
     where: { isActive: true },
   });
 
-  const totalRevenue = products.reduce((sum, p) => sum + p.price * p.sold, 0);
-  const totalSold = products.reduce((sum, p) => sum + p.sold, 0);
+  const totalRevenue = tours.reduce((sum, p) => sum + p.price * p.sold, 0);
+  const totalSold = tours.reduce((sum, p) => sum + p.sold, 0);
 
-  const topProduct = products.reduce(
+  const topTour = tours.reduce(
     (top, p) => (p.sold > top.sold ? p : top),
-    products[0] || { id: null, sold: 0 }
+    tours[0] || { id: null, sold: 0 }
   );
 
   return db.monthlySummary.upsert({
@@ -25,18 +25,18 @@ export async function createMonthlySnapshot(now = new Date()) {
     update: {
       totalRevenue,
       totalSold,
-      totalProducts: products.length,
-      topProductId: topProduct?.id || null,
-      topProductSold: topProduct?.sold || 0,
+      totalTours: tours.length,
+      topTourId: topTour?.id || null,
+      topTourSold: topTour?.sold || 0,
     },
     create: {
       year,
       month,
       totalRevenue,
       totalSold,
-      totalProducts: products.length,
-      topProductId: topProduct?.id || null,
-      topProductSold: topProduct?.sold || 0,
+      totalTours: tours.length,
+      topTourId: topTour?.id || null,
+      topTourSold: topTour?.sold || 0,
     },
   });
 }

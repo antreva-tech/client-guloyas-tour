@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       const [sales, total] = await Promise.all([
         db.sale.findMany({
           where: whereClause,
-          include: { product: true },
+          include: { tour: true },
           orderBy: [{ batchId: "asc" }, { createdAt: "asc" }],
           skip,
           take: limit,
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     // Legacy non-paginated response for backward compatibility (ordered by batch then line order)
     const sales = await db.sale.findMany({
       where: whereClause,
-      include: { product: true },
+      include: { tour: true },
       orderBy: [{ batchId: "asc" }, { createdAt: "asc" }],
     });
 
@@ -140,45 +140,43 @@ export async function POST(request: NextRequest) {
       provincia,
       municipio,
       customerAddress,
-      lugarTrabajo,
       notes,
-      fechaEntrega,
       fechaVisita,
-      supervisor,
-      nombreVendedor,
       isPaid,
     } = parsed.data;
+    const supervisor = parsed.data.supervisor?.trim() || null;
+    const nombreVendedor = parsed.data.nombreVendedor?.trim() || null;
 
     // Validate stock availability and sellability for all items
     for (const item of items) {
-      const product = await db.product.findUnique({
-        where: { id: item.productId },
+      const tour = await db.tour.findUnique({
+        where: { id: item.tourId },
       });
 
-      if (!product) {
+      if (!tour) {
         return NextResponse.json(
-          { error: `Product not found: ${item.productId}` },
+          { error: `Tour not found: ${item.tourId}` },
           { status: 400 }
         );
       }
 
-      if (product.name === IMPORT_ONLY_PRODUCT_NAME) {
+      if (tour.name === IMPORT_ONLY_PRODUCT_NAME) {
         return NextResponse.json(
           { error: `${IMPORT_ONLY_PRODUCT_NAME} is for import only and cannot be sold.` },
           { status: 400 }
         );
       }
 
-      if (product.stock !== -1 && product.stock < item.quantity) {
+      if (tour.stock !== -1 && tour.stock < item.quantity) {
         return NextResponse.json(
-          { error: `Insufficient stock for ${product.name}. Available: ${product.stock}` },
+          { error: `Insufficient stock for ${tour.name}. Available: ${tour.stock}` },
           { status: 400 }
         );
       }
     }
 
-    // Parse date strings to Date objects
-    const deliveryDate = new Date(fechaEntrega);
+    // Reservation date = creation time; tour date from request
+    const reservationDate = new Date();
     const visitDate = new Date(fechaVisita);
 
     // Create sale records and update products in a transaction
@@ -193,20 +191,19 @@ export async function POST(request: NextRequest) {
         const sale = await tx.sale.create({
           data: {
             batchId,
-            productId: item.productId,
+            tourId: item.tourId,
             quantity: item.quantity,
             total: item.total,
             abono: item.abono ?? null,
             pendiente: item.pendiente ?? null,
             customerName,
             customerPhone,
-            cedula,
-            provincia,
-      municipio,
-      customerAddress: customerAddress || null,
-            lugarTrabajo,
+            cedula: cedula?.trim() || null,
+            provincia: provincia?.trim() || null,
+            municipio: municipio?.trim() || null,
+            customerAddress: customerAddress || null,
             notes: notes || null,
-            fechaEntrega: deliveryDate,
+            fechaEntrega: reservationDate,
             fechaVisita: visitDate,
             supervisor,
             nombreVendedor,
@@ -217,10 +214,10 @@ export async function POST(request: NextRequest) {
         saleRecords.push(sale);
 
         // Update product: sold always; stock only when not "always available" (-1)
-        const productForUpdate = await tx.product.findUnique({ where: { id: item.productId }, select: { stock: true } });
-        await tx.product.update({
-          where: { id: item.productId },
-          data: productForUpdate?.stock === -1
+        const tourForUpdate = await tx.tour.findUnique({ where: { id: item.tourId }, select: { stock: true } });
+        await tx.tour.update({
+          where: { id: item.tourId },
+          data: tourForUpdate?.stock === -1
             ? { sold: { increment: item.quantity } }
             : { stock: { decrement: item.quantity }, sold: { increment: item.quantity } },
         });

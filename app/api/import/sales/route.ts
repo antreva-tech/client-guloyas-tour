@@ -135,9 +135,6 @@ function normalizeHeader(raw: string): string {
     direccion: "customerAddress",
     address: "customerAddress",
     customeraddress: "customerAddress",
-    lugartrabajo: "lugarTrabajo",
-    lugardetrabajo: "lugarTrabajo",
-    workplace: "lugarTrabajo",
     supervisor: "supervisor",
     vendedor: "nombreVendedor",
     nombrevendedor: "nombreVendedor",
@@ -231,10 +228,10 @@ function parseProductCellToItems(cell: string): Array<{ lookupName: string; pric
  * CSV must have headers. Required: product (producto/productos) and total (total/precio/monto).
  * Quantity (cantidad) is optional; default 1 per row.
  * Optional: nombre/cliente, telefono, cedula, provincia, municipio, direccion,
- * lugar de trabajo, referencias/notas, fecha de entrega, fecha de visita,
+ * referencias/notas, fecha de entrega, fecha de visita,
  * supervisor, nombre vendedor/vendedor, estado (pagado/pendiente), abono, pendiente.
  * Kairú Ventas CSV: Nombre, Telefono, Cedula, Provincia, Municipio, Direccion,
- * Lugar de Trabajo, Referencias, Fecha de Entrega, Fecha de Visita, Productos, Precio,
+ * Referencias, Fecha de Entrega, Fecha de Visita, Productos, Precio,
  * Abono, Pendiente, Vendedor, Supervisor, Notas, Estado, Nombre Vendedor.
  * @returns JSON with created count and any errors per row.
  */
@@ -282,11 +279,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const allProducts = await db.product.findMany({ select: { id: true, name: true, line: true } });
-    const productByName = new Map<string, { id: string }>();
-    allProducts.forEach((p) => {
+    const allTours = await db.tour.findMany({ select: { id: true, name: true, line: true } });
+    const tourByName = new Map<string, { id: string }>();
+    allTours.forEach((p) => {
       const key = normalizeProductKey(p.name ?? "");
-      if (key && !productByName.has(key)) productByName.set(key, { id: p.id });
+      if (key && !tourByName.has(key)) tourByName.set(key, { id: p.id });
     });
 
     const supervisorList = await getSupervisorList();
@@ -316,7 +313,7 @@ export async function POST(request: NextRequest) {
       const rowQty = quantityIdx !== undefined ? Math.floor(parseFloat(qtyStr) || 0) : 1;
       const qtyPerItem = items.length > 1 ? 1 : (rowQty < 1 ? 1 : rowQty);
 
-      const resolvedItems: Array<{ productId: string; quantity: number; total: number }> = [];
+      const resolvedItems: Array<{ tourId: string; quantity: number; total: number }> = [];
       for (let i = 0; i < items.length; i++) {
         const { lookupName, priceFromCell } = items[i];
         const total =
@@ -330,15 +327,15 @@ export async function POST(request: NextRequest) {
         }
         const productKey = normalizeProductKey(lookupName);
         const candidates = getProductLookupCandidates(productKey);
-        const product = candidates.map((c) => productByName.get(c)).find(Boolean);
-        if (!product) {
+        const tour = candidates.map((c) => tourByName.get(c)).find(Boolean);
+        if (!tour) {
           const msg = `Producto no encontrado: "${lookupName}"`;
           const rows = errorByMessage.get(msg) ?? [];
           if (!rows.includes(r + 1)) rows.push(r + 1);
           errorByMessage.set(msg, rows);
           break;
         }
-        resolvedItems.push({ productId: product.id, quantity: qtyPerItem, total });
+        resolvedItems.push({ tourId: tour.id, quantity: qtyPerItem, total });
       }
       if (resolvedItems.length !== items.length) continue;
 
@@ -357,7 +354,6 @@ export async function POST(request: NextRequest) {
       const provincia = getCell(row, headerMap, ["provincia"]) || null;
       const municipio = getCell(row, headerMap, ["municipio"]) || null;
       const customerAddress = getCell(row, headerMap, ["customerAddress"]) || null;
-      const lugarTrabajo = getCell(row, headerMap, ["lugarTrabajo"]) || null;
       const notes = getCell(row, headerMap, ["notes", "referencias", "nota"]) || null;
 
       const abonoStr = getCell(row, headerMap, ["abono"]);
@@ -391,12 +387,12 @@ export async function POST(request: NextRequest) {
 
       await db.$transaction(async (tx) => {
         for (let i = 0; i < resolvedItems.length; i++) {
-          const { productId, quantity, total } = resolvedItems[i];
+          const { tourId, quantity, total } = resolvedItems[i];
           const isFirst = i === 0;
           await tx.sale.create({
             data: {
               batchId,
-              productId,
+              tourId,
               quantity,
               total,
               abono: isFirst ? (abono ?? null) : null,
@@ -407,7 +403,6 @@ export async function POST(request: NextRequest) {
               provincia,
               municipio,
               customerAddress,
-              lugarTrabajo,
               notes,
               fechaEntrega,
               fechaVisita,
@@ -416,12 +411,12 @@ export async function POST(request: NextRequest) {
               isPaid,
             },
           });
-          const prod = await tx.product.findUnique({ where: { id: productId }, select: { stock: true } });
-          if (prod?.stock === -1) {
-            await tx.product.update({ where: { id: productId }, data: { sold: { increment: quantity } } });
+          const t = await tx.tour.findUnique({ where: { id: tourId }, select: { stock: true } });
+          if (t?.stock === -1) {
+            await tx.tour.update({ where: { id: tourId }, data: { sold: { increment: quantity } } });
           } else {
-            await tx.product.update({
-              where: { id: productId },
+            await tx.tour.update({
+              where: { id: tourId },
               data: { stock: { decrement: quantity }, sold: { increment: quantity } },
             });
           }

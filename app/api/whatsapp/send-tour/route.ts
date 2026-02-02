@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 
 const SendTourSchema = z.object({
-  productId: z.string().min(1, "productId is required"),
+  tourId: z.string().min(1, "tourId is required"),
   message: z.string().min(1, "message is required").max(4096),
 });
 
@@ -14,8 +14,8 @@ const THROTTLE_MS = 150;
 
 /**
  * POST /api/whatsapp/send-tour
- * Sends the same WhatsApp message to each distinct customer who booked the given tour (product).
- * Body: { productId: string, message: string }
+ * Sends the same WhatsApp message to each distinct customer who booked the given tour.
+ * Body: { tourId: string, message: string }
  * Requires supervisor or above. Sends one message per phone; skips empty phones.
  */
 export async function POST(request: NextRequest) {
@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { productId, message } = parsed.data;
+    const { tourId, message } = parsed.data;
 
     const sales = await db.sale.findMany({
-      where: { productId, voidedAt: null, customerPhone: { not: null } },
+      where: { tourId, voidedAt: null, customerPhone: { not: null } },
       select: { customerPhone: true },
     });
     const phones = [...new Set(sales.map((s) => normalizePhone(s.customerPhone ?? "")).filter(Boolean))];

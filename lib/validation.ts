@@ -5,24 +5,22 @@ import { z } from "zod";
  * Accepts: /uploads/image.jpg, https://example.com/image.jpg
  * Rejects: empty strings, malformed URLs
  */
-const imageUrlSchema = z
-  .string()
-  .refine(
-    (val) => {
-      // Allow relative paths starting with /
-      if (val.startsWith("/")) return true;
-      // Allow full URLs
-      try {
-        new URL(val);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    { message: "Must be a valid URL or relative path" }
-  )
-  .nullable()
-  .optional();
+/** Validates a single image URL or path (for use in arrays). */
+const imageUrlElementSchema = z.string().refine(
+  (val) => {
+    if (!val || val.length === 0) return false;
+    if (val.startsWith("/")) return true;
+    try {
+      new URL(val);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: "Must be a valid URL or relative path" }
+);
+
+const imageUrlSchema = imageUrlElementSchema.nullable().optional();
 
 /**
  * Sentinel for "always available" stock: never decremented, sales only tracked.
@@ -40,10 +38,7 @@ export const CreateProductSchema = z.object({
     .string()
     .min(1, "Name is required")
     .max(200, "Name must be 200 characters or less"),
-  line: z
-    .string()
-    .min(1, "Line is required")
-    .max(100, "Line must be 100 characters or less"),
+  line: z.string().max(100).optional(),
   description: z
     .string()
     .min(1, "Description is required")
@@ -53,15 +48,15 @@ export const CreateProductSchema = z.object({
     .int("Price must be a whole number")
     .min(0, "Price cannot be negative")
     .max(10_000_000, "Price exceeds maximum"),
-  specialOfferPrice: z
+  childPrice: z
     .number()
-    .int("Special offer price must be a whole number")
-    .min(0, "Special offer price cannot be negative")
-    .max(10_000_000, "Special offer price exceeds maximum")
+    .int("Child price must be a whole number")
+    .min(0, "Child price cannot be negative")
+    .max(10_000_000, "Child price exceeds maximum")
     .nullable()
     .optional(),
   currency: z.string().max(10).optional(),
-  imageUrl: imageUrlSchema,
+  imageUrls: z.array(imageUrlElementSchema).max(20).optional(),
   stock: z
     .number()
     .int("Stock must be a whole number")
@@ -85,6 +80,8 @@ export const CreateProductSchema = z.object({
     .min(0, "Low seats threshold cannot be negative")
     .nullable()
     .optional(),
+  /** Default tour date (ISO date string); pre-fills "Fecha del Tour" when booking. */
+  tourDate: z.string().optional(),
 });
 
 /**
@@ -97,11 +94,7 @@ export const UpdateProductSchema = z.object({
     .min(1, "Name cannot be empty")
     .max(200, "Name must be 200 characters or less")
     .optional(),
-  line: z
-    .string()
-    .min(1, "Line cannot be empty")
-    .max(100, "Line must be 100 characters or less")
-    .optional(),
+  line: z.string().max(100).optional(),
   description: z
     .string()
     .min(1, "Description cannot be empty")
@@ -113,15 +106,15 @@ export const UpdateProductSchema = z.object({
     .min(0, "Price cannot be negative")
     .max(10_000_000, "Price exceeds maximum")
     .optional(),
-  specialOfferPrice: z
+  childPrice: z
     .number()
-    .int("Special offer price must be a whole number")
-    .min(0, "Special offer price cannot be negative")
-    .max(10_000_000, "Special offer price exceeds maximum")
+    .int("Child price must be a whole number")
+    .min(0, "Child price cannot be negative")
+    .max(10_000_000, "Child price exceeds maximum")
     .nullable()
     .optional(),
   currency: z.string().max(10).optional(),
-  imageUrl: imageUrlSchema,
+  imageUrls: z.array(imageUrlElementSchema).max(20).optional(),
   stock: z
     .number()
     .int("Stock must be a whole number")
@@ -145,6 +138,7 @@ export const UpdateProductSchema = z.object({
     .min(0, "Low seats threshold cannot be negative")
     .nullable()
     .optional(),
+  tourDate: z.string().nullable().optional(),
 });
 
 /**
@@ -152,7 +146,7 @@ export const UpdateProductSchema = z.object({
  * Includes abono (partial payment) and pendiente (pending amount) fields.
  */
 export const SaleItemSchema = z.object({
-  productId: z.string().min(1, "Product ID is required"),
+  tourId: z.string().min(1, "Tour ID is required"),
   quantity: z
     .number()
     .int("Quantity must be a whole number")
@@ -195,16 +189,15 @@ export const CreateSaleSchema = z.object({
     .max(100, "Too many items in sale"),
   customerName: z.string().min(1, "Nombre del cliente es requerido").max(200),
   customerPhone: z.string().min(1, "Teléfono es requerido").max(50),
-  cedula: z.string().min(1, "Cédula es requerida").max(20),
-  provincia: z.string().min(1, "Provincia es requerida").max(100),
-  municipio: z.string().min(1, "Municipio es requerido").max(100),
+  cedula: z.string().max(20).optional(),
+  provincia: z.string().max(100).optional(),
+  municipio: z.string().max(100).optional(),
   customerAddress: z.string().max(300).optional(),
-  lugarTrabajo: z.string().min(1, "Lugar de trabajo es requerido").max(200),
   notes: z.string().max(1000).optional(),
-  fechaEntrega: z.string().min(1, "Fecha de entrega es requerida"),
-  fechaVisita: z.string().min(1, "Fecha de visita es requerida"),
-  supervisor: z.string().min(1, "Supervisor es requerido").max(200),
-  nombreVendedor: z.string().min(1, "Nombre del vendedor es requerido").max(200),
+  fechaEntrega: z.string().optional(), /// Set server-side from reservation creation time
+  fechaVisita: z.string().min(1, "Fecha del tour es requerida"),
+  supervisor: z.string().max(200).optional(),
+  nombreVendedor: z.string().max(200).optional(),
   isPaid: z.boolean().default(false),
 });
 
@@ -232,7 +225,6 @@ export const UpdateInvoiceSchema = z.object({
   provincia: z.string().max(100).optional(),
   municipio: z.string().max(100).optional(),
   customerAddress: z.string().max(300).nullable().optional(),
-  lugarTrabajo: z.string().max(200).optional(),
   notes: z.string().max(1000).nullable().optional(),
   fechaEntrega: z.string().nullable().optional(),
   fechaVisita: z.string().nullable().optional(),
@@ -248,7 +240,7 @@ export const UpdateBatchItemsSchema = z.object({
     .array(
       z.object({
         id: z.string().optional(),
-        productId: z.string().min(1),
+        tourId: z.string().min(1),
         quantity: z.number().int().min(1).max(1000),
         total: z.number().int().min(0),
         abono: z.number().int().min(0).optional(),

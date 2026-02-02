@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     if (type === "products") {
       // Export all products
-      const products = await db.product.findMany({
+      const tours = await db.tour.findMany({
         orderBy: { createdAt: "desc" },
       });
 
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         "Fecha Creación",
       ];
 
-      const rows = products.map((p) => [
+      const rows = tours.map((p) => [
         p.id,
         p.name,
         p.line,
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
       ]);
 
       csv = toCSV(headers, rows);
-      filename = `productos_${new Date().toISOString().split("T")[0]}.csv`;
+      filename = `tours_${new Date().toISOString().split("T")[0]}.csv`;
     } else if (type === "sales") {
       // Export sales with optional date filtering
       const whereClause: Record<string, unknown> = {};
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
 
       const sales = await db.sale.findMany({
         where: whereClause,
-        include: { product: true },
+        include: { tour: true },
         orderBy: { createdAt: "desc" },
       });
 
@@ -135,8 +135,8 @@ export async function GET(request: NextRequest) {
 
       const rows = sales.map((s) => [
         s.id,
-        s.product.name,
-        s.product.line,
+        s.tour.name,
+        s.tour.line,
         s.quantity.toString(),
         s.total.toString(),
         s.notes || "",
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
         "Mes",
         "Ingresos Totales (RD$)",
         "Unidades Vendidas",
-        "Productos Activos",
+        "Tours Activos",
         "Fecha Registro",
       ];
 
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
         monthNames[s.month - 1],
         s.totalRevenue.toString(),
         s.totalSold.toString(),
-        s.totalProducts.toString(),
+        s.totalTours.toString(),
         s.createdAt.toISOString().split("T")[0],
       ]);
 
@@ -179,20 +179,20 @@ export async function GET(request: NextRequest) {
       filename = `resumen_mensual_${new Date().toISOString().split("T")[0]}.csv`;
     } else if (type === "summary") {
       // Export current summary snapshot
-      const products = await db.product.findMany();
+      const tours = await db.tour.findMany();
 
-      const totalRevenue = products.reduce((sum, p) => sum + p.price * p.sold, 0);
-      const totalSold = products.reduce((sum, p) => sum + p.sold, 0);
-      const totalStock = products.reduce((sum, p) => sum + p.stock, 0);
-      const activeProducts = products.filter((p) => p.isActive).length;
+      const totalRevenue = tours.reduce((sum, p) => sum + p.price * p.sold, 0);
+      const totalSold = tours.reduce((sum, p) => sum + p.sold, 0);
+      const totalStock = tours.reduce((sum, p) => sum + p.stock, 0);
+      const activeTours = tours.filter((p) => p.isActive).length;
 
       const headers = ["Métrica", "Valor"];
       const rows = [
         ["Ingresos Totales (RD$)", totalRevenue.toString()],
         ["Total Unidades Vendidas", totalSold.toString()],
         ["Total en Inventario", totalStock.toString()],
-        ["Productos Activos", activeProducts.toString()],
-        ["Productos Totales", products.length.toString()],
+        ["Tours Activos", activeTours.toString()],
+        ["Tours Totales", tours.length.toString()],
         ["Fecha del Reporte", new Date().toISOString().split("T")[0]],
       ];
 

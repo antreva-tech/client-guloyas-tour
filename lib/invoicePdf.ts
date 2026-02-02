@@ -158,7 +158,7 @@ export function generateInvoicePdf(invoice: InvoiceDTO, logoPath?: string): Uint
   const col2W = CONTENT_W - col1W;
   const rows: [string, string][] = [
     ["Cliente", invoice.customer.name],
-    ["Pasaporte", invoice.customer.passport],
+    ["Cédula/Passaporte", invoice.customer.passport],
     ["Teléfono", invoice.customer.phone],
     ["Estatus", `${invoice.statusBlock.title}\n${invoice.statusBlock.dateRangeText}`],
   ];
@@ -289,11 +289,11 @@ function getCompany(): InvoiceCompany {
   };
 }
 
-/** Sale row with product (from DB). */
-export interface SaleWithProduct {
+/** Sale row with tour (from DB). */
+export interface SaleWithTour {
   id: string;
   batchId: string;
-  productId: string;
+  tourId: string;
   quantity: number;
   total: number;
   abono: number | null;
@@ -306,7 +306,7 @@ export interface SaleWithProduct {
   isPaid: boolean;
   nombreVendedor: string | null;
   createdAt: Date;
-  product: { name: string } | null;
+  tour: { name: string } | null;
 }
 
 /**
@@ -316,7 +316,7 @@ export interface SaleWithProduct {
  * @param batchId - Batch ID for invoice number.
  * @returns Invoice DTO.
  */
-export function buildInvoiceFromSales(sales: SaleWithProduct[], batchId: string): InvoiceDTO {
+export function buildInvoiceFromSales(sales: SaleWithTour[], batchId: string): InvoiceDTO {
   const first = sales[0];
   const subTotal = sales.reduce((sum, s) => sum + s.total, 0);
   const totalPaid = sales.reduce((sum, s) => sum + (s.abono ?? 0), 0);
@@ -347,7 +347,7 @@ export function buildInvoiceFromSales(sales: SaleWithProduct[], batchId: string)
     paymentTerms: first.isPaid ? "Pagado" : "Pago parcial / Pendiente",
     items: sales.map((s) => ({
       qty: s.quantity,
-      description: s.product?.name ?? "",
+      description: s.tour?.name ?? "",
       unit: "PP",
       unitPrice: s.total / s.quantity,
     })),
@@ -369,9 +369,9 @@ export function buildInvoiceFromSales(sales: SaleWithProduct[], batchId: string)
 export async function buildInvoiceFromBatch(batchId: string): Promise<InvoiceDTO | null> {
   const sales = await db.sale.findMany({
     where: { batchId, voidedAt: null },
-    include: { product: true },
+    include: { tour: true },
     orderBy: { createdAt: "asc" },
   });
   if (sales.length === 0) return null;
-  return buildInvoiceFromSales(sales as SaleWithProduct[], batchId);
+  return buildInvoiceFromSales(sales as SaleWithTour[], batchId);
 }

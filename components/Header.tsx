@@ -103,18 +103,16 @@ export function Header() {
     >
       <nav className="relative z-[1001] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16">
-          {/* Logo with light backdrop for visibility */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="bg-white/95 rounded-lg px-3 py-1.5">
-              <Image
-                src={brandConfig.logoPath}
-                alt={brandConfig.brandName}
-                width={100}
-                height={32}
-                className="h-7 sm:h-9 w-auto"
-                priority
-              />
-            </div>
+          {/* Logo: no background so it sits on dark header (use white logo asset on dark). */}
+          <Link href="/" className="flex items-center gap-2 py-1.5">
+            <Image
+              src={brandConfig.logoPath}
+              alt={brandConfig.brandName}
+              width={100}
+              height={32}
+              className="h-8 sm:h-10 w-auto"
+              priority
+            />
           </Link>
 
           {/* Desktop Navigation */}

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { brandConfig } from "@/lib/brandConfig";
-import type { Product } from "@prisma/client";
+import type { Product } from "@/lib/products";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { InvoiceHistoryPanel } from "@/components/InvoiceHistoryPanel";
 import { ProvinciaPieChart } from "@/components/ProvinciaPieChart";
@@ -12,7 +12,7 @@ import { IMPORT_ONLY_PRODUCT_NAME, isImportOnlyProduct } from "@/lib/products";
 import { UNLIMITED_STOCK } from "@/lib/validation";
 import { formatDateTime } from "@/lib/formatDate";
 import { formatPhoneForDisplay } from "@/lib/phone";
-import { canSeeResumen, canSeeProducts, canDeleteVoidedInvoices, showSupervisorFilter } from "@/lib/permissions";
+import { canSeeResumen, canSeeProducts, canDeleteVoidedInvoices } from "@/lib/permissions";
 import type { SessionRole } from "@/lib/permissions";
 
 interface AdminDashboardProps {
@@ -60,12 +60,12 @@ interface CompletedSale {
   provincia: string;
   municipio: string;
   customerAddress?: string;
-  lugarTrabajo: string;
   notes?: string;
-  fechaEntrega: string;
   fechaVisita: string;
-  supervisor: string;
-  nombreVendedor: string;
+  /** Reservation date (set from creation time; displayed for completed sale). */
+  fechaReserva?: string;
+  supervisor?: string;
+  nombreVendedor?: string;
   isPaid: boolean;
   date: string;
 }
@@ -87,12 +87,12 @@ export function AdminDashboard({
     batchId: string;
     items: Array<{
       id: string;
-      productId: string;
+      tourId: string;
       quantity: number;
       total: number;
       abono?: number | null;
       pendiente?: number | null;
-      product?: { name?: string; line?: string };
+      tour?: { name?: string; line?: string };
     }>;
   } | null>(null);
   const defaultView: AdminView = canSeeResumen(role) ? "overview" : "sales";
@@ -379,24 +379,7 @@ export function AdminDashboard({
           )}
 
           <div className="bg-porcelain rounded-xl border border-gold-200/50 p-4 tablet:col-span-2 flex flex-col sm:flex-row gap-4">
-              {paidStats.topSellers.length > 0 && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-jet/60 text-xs uppercase tracking-wider mb-2">Top en Ventas</p>
-                  <div className="space-y-2">
-                    {paidStats.topSellers.map((s, i) => (
-                      <div key={`${s.nombreVendedor}-${i}`} className="flex items-center justify-between text-sm">
-                        <span className="text-jet font-medium truncate">
-                          {i + 1}. {s.nombreVendedor}
-                        </span>
-                        <span className="text-gold-500 font-bold shrink-0 ml-2">
-                          RD$ {s.totalRevenue.toLocaleString()} ({s.invoiceCount} {s.invoiceCount === 1 ? "factura" : "facturas"})
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="flex-1 min-w-0 border-t border-gold-200/30 pt-4 sm:border-t-0 sm:border-l sm:border-gold-200/30 sm:pt-0 sm:pl-4">
+              <div className="flex-1 min-w-0">
                 <p className="text-jet/60 text-xs uppercase tracking-wider mb-2">Ventas por provincia</p>
                 <ProvinciaPieChart data={paidStats.provinciaStats} />
               </div>
@@ -428,7 +411,7 @@ export function AdminDashboard({
           showSearch={false}
           showVoidActions={false}
           showRefresh={false}
-          showSupervisorFilter={showSupervisorFilter(role)}
+          showSupervisorFilter={false}
           showDeleteVoidedActions={canDeleteVoidedInvoices(role)}
           onInvoiceDeleted={() => void refreshPaidStats()}
           title="Últimas 5 facturas"
@@ -443,14 +426,14 @@ export function AdminDashboard({
         <>
           <div className="flex flex-col landscape:flex-row landscape:justify-between landscape:items-center tablet:flex-row tablet:justify-between tablet:items-center gap-3">
             <h2 className="text-lg tablet:text-xl font-semibold text-jet">
-              Gestión de Productos
+              Gestión de Tours y Excursiones
             </h2>
             <div className="flex gap-2 w-full landscape:w-auto tablet:w-auto">
               <button
                 onClick={() => setIsCreating(true)}
                 className="btn-primary w-full landscape:w-auto tablet:w-auto px-4 py-3 tablet:py-2 rounded-lg text-sm font-semibold"
               >
-                + Nuevo Producto
+                + Nuevo Tour o Excursion
               </button>
             </div>
           </div>
@@ -528,7 +511,7 @@ export function AdminDashboard({
                 onClick={() => setIsCreatingSale(true)}
                 className="bg-success hover:bg-success/90 text-white w-full landscape:w-auto tablet:w-auto px-4 py-3 tablet:py-2 rounded-lg text-sm font-semibold transition-colors"
               >
-                💰 Nueva Venta
+                💰 Nueva Reserva
               </button>
             </div>
           </div>
@@ -543,7 +526,6 @@ export function AdminDashboard({
                 setIsCreatingSale(false);
                 refreshProducts();
               }}
-              defaultSupervisor={supervisorName}
             />
           )}
 
@@ -575,7 +557,7 @@ export function AdminDashboard({
               }
             }}
             showMonthFilter
-            showSupervisorFilter={showSupervisorFilter(role)}
+            showSupervisorFilter={false}
             showDeleteVoidedActions={canDeleteVoidedInvoices(role)}
             pageSize={10}
           />
@@ -686,7 +668,7 @@ function MessagesSection({ products }: { products: Product[] }) {
       const res = await fetch("/api/whatsapp/send-tour", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId, message: message.trim() }),
+        body: JSON.stringify({ tourId: productId, message: message.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al enviar");
@@ -865,15 +847,14 @@ function ProductCard({
 }) {
   const canDelete = !isImportOnlyProduct(product) && product.sold === 0;
   const showStock = product.stock !== UNLIMITED_STOCK;
-  const offerPrice = (product as { specialOfferPrice?: number | null }).specialOfferPrice;
-  const hasOffer = offerPrice != null && offerPrice > 0;
+  const primaryImage = (product as { imageUrls?: string[] }).imageUrls?.[0];
   return (
     <div className="bg-porcelain rounded-xl border border-gold-200/50 shadow-sm p-4 tablet-landscape:p-3 overflow-hidden">
       {/* Product image (when available) */}
-      {product.imageUrl && (
+      {primaryImage && (
         <div className="relative w-[240px] h-[240px] tablet-landscape:w-[180px] tablet-landscape:h-[180px] mx-auto mb-3 tablet-landscape:mb-2 rounded-lg overflow-hidden bg-pearl">
           <Image
-            src={product.imageUrl}
+            src={primaryImage}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 240px, 180px"
@@ -899,7 +880,7 @@ function ProductCard({
         </button>
       </div>
 
-      {/* Stats row: Precio, Plazas (if tracked), Oferta (if set), Reservas */}
+      {/* Stats row: Precio, Plazas (if tracked), Reservas */}
       <div className="grid grid-cols-2 gap-1.5 mb-4 tablet-landscape:mb-2 tablet-landscape:gap-1 tablet-landscape:grid-cols-2">
         <div className="bg-pearl rounded-lg p-2.5 text-center tablet-landscape:p-1.5">
           <p className="text-jet/50 text-xs tablet-landscape:text-[10px]">Precio</p>
@@ -912,14 +893,6 @@ function ProductCard({
             <p className="text-jet/50 text-xs tablet-landscape:text-[10px]">Plazas</p>
             <p className={`font-medium text-sm tablet-landscape:text-xs ${product.stock === 0 ? "text-danger" : "text-jet"}`}>
               {product.stock}
-            </p>
-          </div>
-        )}
-        {hasOffer && (
-          <div className="bg-gold-500/10 rounded-lg p-2.5 text-center tablet-landscape:p-1.5 border border-gold-500/30">
-            <p className="text-gold-500 text-xs tablet-landscape:text-[10px]">Oferta</p>
-            <p className="text-gold-500 font-medium text-sm tablet-landscape:text-xs">
-              {product.currency} {offerPrice!.toLocaleString()}
             </p>
           </div>
         )}
@@ -954,7 +927,7 @@ function ProductCard({
 /**
  * New product form component.
  * Mobile-optimized with full-width inputs and larger touch targets.
- * Supports image file upload.
+ * Supports multiple image uploads; catalog card shows swipeable gallery.
  * Light theme variant.
  */
 function ProductForm({
@@ -967,57 +940,42 @@ function ProductForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
 
   /**
-   * Handles image file selection and upload.
+   * Uploads a single file and appends its URL to imageUrls.
    */
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Show preview immediately
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // Upload file
+    const files = e.target.files;
+    if (!files?.length) return;
     setIsUploading(true);
     setError(null);
-
+    const newUrls: string[] = [];
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Error al subir imagen");
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Error al subir imagen");
+        }
+        const data = await res.json();
+        newUrls.push(data.url);
       }
-
-      const data = await res.json();
-      setImageUrl(data.url);
+      setImageUrls((prev) => [...prev, ...newUrls]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al subir imagen");
-      setImagePreview(null);
     } finally {
       setIsUploading(false);
+      e.target.value = "";
     }
   }
 
-  /**
-   * Removes the selected image.
-   */
-  function handleRemoveImage() {
-    setImageUrl(null);
-    setImagePreview(null);
+  /** Removes one image by index. */
+  function handleRemoveImage(index: number) {
+    setImageUrls((prev) => prev.filter((_, i) => i !== index));
   }
 
   /**
@@ -1031,21 +989,23 @@ function ProductForm({
     const formData = new FormData(e.currentTarget);
     const stockRaw = (formData.get("stock") as string)?.trim() ?? "";
     const stock = stockRaw === "-" ? UNLIMITED_STOCK : Math.max(UNLIMITED_STOCK, parseInt(stockRaw, 10) || 0);
-    const specialOfferRaw = (formData.get("specialOfferPrice") as string)?.trim() ?? "";
-    const specialOfferPrice = specialOfferRaw === "" ? null : Math.max(0, parseInt(specialOfferRaw, 10) || 0);
-    const sequence = Math.max(0, parseInt((formData.get("sequence") as string) || "0", 10) || 0);
+    const childPriceRaw = (formData.get("childPrice") as string)?.trim() ?? "";
+    const childPrice = childPriceRaw === "" ? null : Math.max(0, parseInt(childPriceRaw, 10) || 0);
     const lowSeatsRaw = (formData.get("lowSeatsThreshold") as string)?.trim() ?? "";
     const lowSeatsThreshold = lowSeatsRaw === "" ? null : Math.max(0, parseInt(lowSeatsRaw, 10) || 0);
+    const tourDateRaw = (formData.get("tourDate") as string)?.trim() ?? "";
+    const tourDate = tourDateRaw === "" ? undefined : tourDateRaw;
     const data = {
       name: formData.get("name") as string,
-      line: formData.get("line") as string,
+      line: "Tour",
       description: formData.get("description") as string,
       price: parseInt(formData.get("price") as string) || 0,
-      specialOfferPrice,
+      childPrice,
       stock,
-      sequence,
+      sequence: 0,
       lowSeatsThreshold,
-      imageUrl: imageUrl || undefined,
+      tourDate,
+      imageUrls: imageUrls.length ? imageUrls : undefined,
     };
 
     try {
@@ -1072,7 +1032,7 @@ function ProductForm({
   return (
     <div className="bg-porcelain rounded-xl border border-gold-200/50 shadow-sm p-4 tablet:p-5 tablet-lg:p-6">
       <h3 className="text-lg font-semibold text-jet mb-4">
-        Nuevo Tour
+        Nuevo Producto
       </h3>
 
       {error && (
@@ -1081,31 +1041,37 @@ function ProductForm({
         </div>
       )}
 
-      {/* Responsive grid: 1 col mobile portrait, 2 cols landscape/tablet */}
       <form onSubmit={handleSubmit} className="grid mobile-landscape:grid-cols-2 tablet:grid-cols-2 gap-3 tablet:gap-4">
-        <FormField label="Nombre" name="name" required />
-        <FormField label="Línea" name="line" required />
+        <FormField label="Nombre" name="name" required className="mobile-landscape:col-span-2 tablet:col-span-2" />
         <FormField
           label="Descripción"
           name="description"
           required
           className="mobile-landscape:col-span-2 tablet:col-span-2"
         />
-        <FormField label="Precio (RD$)" name="price" type="number" required />
         <div>
-          <label htmlFor="create-specialOfferPrice" className="block text-sm font-medium text-jet/80 mb-1">Precio Oferta (RD$)</label>
+          <label htmlFor="create-tourDate" className="block text-sm font-medium text-jet/80 mb-1">Fecha</label>
           <input
-            id="create-specialOfferPrice"
-            name="specialOfferPrice"
+            id="create-tourDate"
+            name="tourDate"
+            type="date"
+            className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
+          />
+        </div>
+        <FormField label="Precio Adultos (RD$)" name="price" type="number" required />
+        <div>
+          <label htmlFor="create-childPrice" className="block text-sm font-medium text-jet/80 mb-1">Precio Niños (RD$)</label>
+          <input
+            id="create-childPrice"
+            name="childPrice"
             type="number"
             min={0}
             placeholder="Opcional"
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
-          <p className="text-jet/50 text-xs mt-1">Si se define, aparecerá en la venta con precio normal y oferta.</p>
         </div>
         <div>
-          <label htmlFor="create-stock" className="block text-sm font-medium text-jet/80 mb-1">Plazas / Capacidad</label>
+          <label htmlFor="create-stock" className="block text-sm font-medium text-jet/80 mb-1">Capacidad</label>
           <input
             id="create-stock"
             name="stock"
@@ -1113,106 +1079,63 @@ function ProductForm({
             placeholder="0 o - (siempre disponible)"
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
-          <p className="text-jet/50 text-xs mt-1">Use &quot;-&quot; para siempre disponible (solo se registran reservas).</p>
         </div>
         <div>
-          <label htmlFor="create-lowSeatsThreshold" className="block text-sm font-medium text-jet/80 mb-1">Umbral plazas bajas</label>
+          <label htmlFor="create-lowSeatsThreshold" className="block text-sm font-medium text-jet/80 mb-1">Que muestre cuando quedan pocos cupos</label>
           <input
             id="create-lowSeatsThreshold"
             name="lowSeatsThreshold"
             type="number"
             min={0}
-            placeholder="Usar valor por defecto"
+            placeholder="Opcional"
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
-          <p className="text-jet/50 text-xs mt-1">Si se define, en el sitio se mostrará &quot;¡Pocas plazas!&quot; cuando queden tantas o menos. Vacío = usar el valor por defecto de Ajustes.</p>
-        </div>
-        <div>
-          <label htmlFor="create-sequence" className="block text-sm font-medium text-jet/80 mb-1">Orden en catálogo</label>
-          <input
-            id="create-sequence"
-            name="sequence"
-            type="number"
-            min={0}
-            defaultValue={0}
-            placeholder="0"
-            className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
-          />
-          <p className="text-jet/50 text-xs mt-1">Número menor = aparece primero en el catálogo.</p>
-        </div>
-        
-        {/* Image upload field */}
-        <div className="mobile-landscape:col-span-2 tablet:col-span-2">
-          <label className="block text-sm font-medium text-jet/80 mb-1.5">
-            Imagen del Producto
-          </label>
-          
-          {imagePreview ? (
-            <div className="relative inline-block">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-32 h-32 object-cover rounded-lg border border-gold-200/50"
-              />
-              <button
-                type="button"
-                onClick={handleRemoveImage}
-                className="absolute -top-2 -right-2 bg-danger text-white w-6 h-6 rounded-full text-sm flex items-center justify-center hover:bg-danger/80"
-                aria-label="Eliminar imagen"
-              >
-                ×
-              </button>
-              {isUploading && (
-                <div className="absolute inset-0 bg-jet/50 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xs">Subiendo...</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gold-200 rounded-lg cursor-pointer hover:border-aqua-500 transition-colors bg-pearl">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <svg
-                  className="w-8 h-8 mb-2 text-jet/40"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-                <p className="text-sm text-jet/60">
-                  <span className="text-aqua-700 font-medium">Subir imagen</span> o arrastrar
-                </p>
-                <p className="text-xs text-jet/40 mt-1">PNG, JPG, WebP (máx. 5MB)</p>
-              </div>
-              <input
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-            </label>
-          )}
         </div>
 
-        {/* Buttons - responsive for all devices */}
+        {/* Multiple image upload */}
+        <div className="mobile-landscape:col-span-2 tablet:col-span-2">
+          <label className="block text-sm font-medium text-jet/80 mb-1.5">
+            Imágenes del Tour o Viaje
+          </label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {imageUrls.map((url, index) => (
+              <div key={url} className="relative">
+                <img src={url} alt="" className="w-24 h-24 object-cover rounded-lg border border-gold-200/50" />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(index)}
+                  className="absolute -top-1 -right-1 bg-danger text-white w-5 h-5 rounded-full text-xs flex items-center justify-center hover:bg-danger/80"
+                  aria-label="Eliminar imagen"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gold-200 rounded-lg cursor-pointer hover:border-aqua-500 transition-colors bg-pearl">
+            <div className="flex flex-col items-center justify-center py-4">
+              <svg className="w-6 h-6 mb-1 text-jet/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-sm text-jet/60"><span className="text-aqua-700 font-medium">Subir imágenes</span> (múltiples)</p>
+              <p className="text-xs text-jet/40 mt-1">PNG, JPG, WebP (máx. 5MB c/u)</p>
+            </div>
+            <input
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+              multiple
+              onChange={handleImageChange}
+              className="hidden"
+            />
+          </label>
+          {isUploading && <p className="text-jet/50 text-xs mt-1">Subiendo...</p>}
+        </div>
+
         <div className="mobile-landscape:col-span-2 tablet:col-span-2 flex flex-col-reverse landscape:flex-row tablet:flex-row gap-3 landscape:justify-end tablet:justify-end mt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-jet/5 hover:bg-jet/10 border border-jet/20 text-jet w-full landscape:w-auto tablet:w-auto px-4 py-3 tablet:py-2 rounded-lg text-sm min-h-[44px] transition-colors"
-          >
+          <button type="button" onClick={onClose} className="bg-jet/5 hover:bg-jet/10 border border-jet/20 text-jet w-full landscape:w-auto tablet:w-auto px-4 py-3 tablet:py-2 rounded-lg text-sm min-h-[44px] transition-colors">
             Cancelar
           </button>
-          <button
-            type="submit"
-            disabled={isSubmitting || isUploading}
-            className="btn-primary w-full landscape:w-auto tablet:w-auto px-4 py-3 tablet:py-2 rounded-lg text-sm font-semibold disabled:opacity-50 min-h-[44px]"
-          >
+          <button type="submit" disabled={isSubmitting || isUploading} className="btn-primary w-full landscape:w-auto tablet:w-auto px-4 py-3 tablet:py-2 rounded-lg text-sm font-semibold disabled:opacity-50 min-h-[44px]">
             {isSubmitting ? "Guardando..." : "Crear Producto"}
           </button>
         </div>
@@ -1238,58 +1161,47 @@ function EditProductForm({
   onSave: () => void;
   embedInModal?: boolean;
 }) {
+  const productWithExtras = product as Product & { imageUrls?: string[]; childPrice?: number | null };
+  const initialImageUrls = productWithExtras.imageUrls?.length
+    ? productWithExtras.imageUrls
+    : (product as { imageUrls?: string[] }).imageUrls?.length
+      ? (product as { imageUrls: string[] }).imageUrls
+      : [];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(product.imageUrl);
-  const [imagePreview, setImagePreview] = useState<string | null>(product.imageUrl);
+  const [imageUrls, setImageUrls] = useState<string[]>(initialImageUrls);
 
   /**
-   * Handles image file selection and upload.
+   * Uploads selected files and appends URLs to imageUrls.
    */
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
+    const files = e.target.files;
+    if (!files?.length) return;
     setIsUploading(true);
     setError(null);
-
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Error al subir imagen");
+      for (let i = 0; i < files.length; i++) {
+        const formData = new FormData();
+        formData.append("file", files[i]);
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Error al subir imagen");
+        }
+        const data = await res.json();
+        setImageUrls((prev) => [...prev, data.url]);
       }
-
-      const data = await res.json();
-      setImageUrl(data.url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al subir imagen");
-      setImagePreview(product.imageUrl);
     } finally {
       setIsUploading(false);
+      e.target.value = "";
     }
   }
 
-  /**
-   * Removes the selected image.
-   */
-  function handleRemoveImage() {
-    setImageUrl(null);
-    setImagePreview(null);
+  function handleRemoveImage(index: number) {
+    setImageUrls((prev) => prev.filter((_, i) => i !== index));
   }
 
   /**
@@ -1303,22 +1215,25 @@ function EditProductForm({
     const formData = new FormData(e.currentTarget);
     const stockRaw = (formData.get("stock") as string)?.trim() ?? "";
     const stock = stockRaw === "-" ? UNLIMITED_STOCK : Math.max(UNLIMITED_STOCK, parseInt(stockRaw, 10) || 0);
-    const specialOfferRaw = (formData.get("specialOfferPrice") as string)?.trim() ?? "";
-    const specialOfferPrice = specialOfferRaw === "" ? null : Math.max(0, parseInt(specialOfferRaw, 10) || 0);
-    const sequence = Math.max(0, parseInt((formData.get("sequence") as string) || "0", 10) || 0);
+    const childPriceRaw = (formData.get("childPrice") as string)?.trim() ?? "";
+    const childPrice = childPriceRaw === "" ? null : Math.max(0, parseInt(childPriceRaw, 10) || 0);
     const lowSeatsRaw = (formData.get("lowSeatsThreshold") as string)?.trim() ?? "";
     const lowSeatsThreshold = lowSeatsRaw === "" ? null : Math.max(0, parseInt(lowSeatsRaw, 10) || 0);
+    const tourDateRaw = (formData.get("tourDate") as string)?.trim() ?? "";
+    const tourDate = tourDateRaw === "" ? null : tourDateRaw;
+    const productExt = product as Product & { sequence?: number };
     const data = {
       name: formData.get("name") as string,
-      line: formData.get("line") as string,
+      line: product.line,
       description: formData.get("description") as string,
       price: parseInt(formData.get("price") as string) || 0,
-      specialOfferPrice,
+      childPrice,
       stock,
-      sold: parseInt(formData.get("sold") as string) || 0,
-      sequence,
+      sold: product.sold,
+      sequence: productExt.sequence ?? 0,
       lowSeatsThreshold,
-      imageUrl: imageUrl || null,
+      tourDate,
+      imageUrls,
     };
 
     try {
@@ -1346,7 +1261,7 @@ function EditProductForm({
     <div className={embedInModal ? "p-4 tablet:p-5 tablet-lg:p-6" : "bg-porcelain rounded-xl border border-gold-200/50 shadow-sm p-4 tablet:p-5 tablet-lg:p-6"}>
       {!embedInModal && (
         <h3 className="text-lg font-semibold text-jet mb-4">
-          Editar Tour
+          Editar Producto
         </h3>
       )}
 
@@ -1356,49 +1271,38 @@ function EditProductForm({
         </div>
       )}
 
-      {/* Responsive grid: 1 col mobile portrait, 2 cols landscape/tablet */}
       <form onSubmit={handleSubmit} className="grid mobile-landscape:grid-cols-2 tablet:grid-cols-2 gap-3 tablet:gap-4">
-        <FormField
-          label="Nombre"
-          name="name"
-          defaultValue={product.name}
-          required
-        />
-        <FormField
-          label="Línea"
-          name="line"
-          defaultValue={product.line}
-          required
-        />
-        <FormField
-          label="Descripción"
-          name="description"
-          defaultValue={product.description}
-          required
-          className="mobile-landscape:col-span-2 tablet:col-span-2"
-        />
-        <FormField
-          label="Precio (RD$)"
-          name="price"
-          type="number"
-          defaultValue={product.price.toString()}
-          required
-        />
+        <FormField label="Nombre" name="name" defaultValue={product.name} required className="mobile-landscape:col-span-2 tablet:col-span-2" />
+        <FormField label="Descripción" name="description" defaultValue={product.description} required className="mobile-landscape:col-span-2 tablet:col-span-2" />
         <div>
-          <label htmlFor="edit-specialOfferPrice" className="block text-sm font-medium text-jet/80 mb-1">Precio Oferta (RD$)</label>
+          <label htmlFor="edit-tourDate" className="block text-sm font-medium text-jet/80 mb-1">Fecha</label>
           <input
-            id="edit-specialOfferPrice"
-            name="specialOfferPrice"
+            id="edit-tourDate"
+            name="tourDate"
+            type="date"
+            defaultValue={(() => {
+              const tourDate = (product as Product & { tourDate?: Date | string | null }).tourDate;
+              if (!tourDate) return "";
+              return typeof tourDate === "string" ? tourDate.slice(0, 10) : new Date(tourDate).toISOString().slice(0, 10);
+            })()}
+            className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
+          />
+        </div>
+        <FormField label="Precio Adultos (RD$)" name="price" type="number" defaultValue={product.price.toString()} required />
+        <div>
+          <label htmlFor="edit-childPrice" className="block text-sm font-medium text-jet/80 mb-1">Precio Niños (RD$)</label>
+          <input
+            id="edit-childPrice"
+            name="childPrice"
             type="number"
             min={0}
-            defaultValue={(product as { specialOfferPrice?: number | null }).specialOfferPrice ?? ""}
+            defaultValue={productWithExtras.childPrice ?? ""}
             placeholder="Opcional"
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
-          <p className="text-jet/50 text-xs mt-1">Si se define, aparecerá en la venta con precio normal y oferta.</p>
         </div>
         <div>
-          <label htmlFor="edit-stock" className="block text-sm font-medium text-jet/80 mb-1">Plazas / Capacidad</label>
+          <label htmlFor="edit-stock" className="block text-sm font-medium text-jet/80 mb-1">Capacidad</label>
           <input
             id="edit-stock"
             name="stock"
@@ -1407,113 +1311,56 @@ function EditProductForm({
             placeholder="0 o - (siempre disponible)"
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
-          <p className="text-jet/50 text-xs mt-1">Use &quot;-&quot; para siempre disponible.</p>
         </div>
-        <FormField
-          label="Reservas"
-          name="sold"
-          type="number"
-          defaultValue={product.sold.toString()}
-        />
         <div>
-          <label htmlFor="edit-lowSeatsThreshold" className="block text-sm font-medium text-jet/80 mb-1">Umbral plazas bajas</label>
+          <label htmlFor="edit-lowSeatsThreshold" className="block text-sm font-medium text-jet/80 mb-1">Que muestre cuando quedan pocos cupos</label>
           <input
             id="edit-lowSeatsThreshold"
             name="lowSeatsThreshold"
             type="number"
             min={0}
             defaultValue={(product as { lowSeatsThreshold?: number | null }).lowSeatsThreshold ?? ""}
-            placeholder="Usar valor por defecto"
+            placeholder="Opcional"
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
-          <p className="text-jet/50 text-xs mt-1">Vacío = usar el valor por defecto de Ajustes.</p>
-        </div>
-        <div>
-          <label htmlFor="edit-sequence" className="block text-sm font-medium text-jet/80 mb-1">Orden en catálogo</label>
-          <input
-            id="edit-sequence"
-            name="sequence"
-            type="number"
-            min={0}
-            defaultValue={(product as { sequence?: number }).sequence ?? 0}
-            placeholder="0"
-            className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
-          />
-          <p className="text-jet/50 text-xs mt-1">Número menor = aparece primero en el catálogo.</p>
-        </div>
-        
-        {/* Image upload field */}
-        <div className="mobile-landscape:col-span-2 tablet:col-span-2">
-          <label className="block text-sm font-medium text-jet/80 mb-1.5">
-            Imagen del Producto
-          </label>
-          
-          {imagePreview ? (
-            <div className="relative inline-block">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-32 h-32 object-cover rounded-lg border border-gold-200/50"
-              />
-              <button
-                type="button"
-                onClick={handleRemoveImage}
-                className="absolute -top-2 -right-2 bg-danger text-white w-6 h-6 rounded-full text-sm flex items-center justify-center hover:bg-danger/80"
-                aria-label="Eliminar imagen"
-              >
-                ×
-              </button>
-              {isUploading && (
-                <div className="absolute inset-0 bg-jet/50 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xs">Subiendo...</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gold-200 rounded-lg cursor-pointer hover:border-aqua-500 transition-colors bg-pearl">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <svg
-                  className="w-8 h-8 mb-2 text-jet/40"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-                <p className="text-sm text-jet/60">
-                  <span className="text-aqua-700 font-medium">Subir imagen</span> o arrastrar
-                </p>
-                <p className="text-xs text-jet/40 mt-1">PNG, JPG, WebP (máx. 5MB)</p>
-              </div>
-              <input
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-            </label>
-          )}
         </div>
 
-        {/* Buttons - responsive for all devices */}
+        {/* Multiple image upload */}
+        <div className="mobile-landscape:col-span-2 tablet:col-span-2">
+          <label className="block text-sm font-medium text-jet/80 mb-1.5">Imágenes del Tour o Viaje</label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {imageUrls.map((url, index) => (
+              <div key={url} className="relative">
+                <img src={url} alt="" className="w-24 h-24 object-cover rounded-lg border border-gold-200/50" />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(index)}
+                  className="absolute -top-1 -right-1 bg-danger text-white w-5 h-5 rounded-full text-xs flex items-center justify-center hover:bg-danger/80"
+                  aria-label="Eliminar imagen"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gold-200 rounded-lg cursor-pointer hover:border-aqua-500 transition-colors bg-pearl">
+            <div className="flex flex-col items-center justify-center py-4">
+              <svg className="w-6 h-6 mb-1 text-jet/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-sm text-jet/60"><span className="text-aqua-700 font-medium">Subir más imágenes</span> (múltiples)</p>
+              <p className="text-xs text-jet/40 mt-1">PNG, JPG, WebP (máx. 5MB c/u)</p>
+            </div>
+            <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif" multiple onChange={handleImageChange} className="hidden" />
+          </label>
+          {isUploading && <p className="text-jet/50 text-xs mt-1">Subiendo...</p>}
+        </div>
+
         <div className="mobile-landscape:col-span-2 tablet:col-span-2 flex flex-col-reverse landscape:flex-row tablet:flex-row gap-3 landscape:justify-end tablet:justify-end mt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-jet/5 hover:bg-jet/10 border border-jet/20 text-jet w-full landscape:w-auto tablet:w-auto px-4 py-3 tablet:py-2 rounded-lg text-sm min-h-[44px] transition-colors"
-          >
+          <button type="button" onClick={onClose} className="bg-jet/5 hover:bg-jet/10 border border-jet/20 text-jet w-full landscape:w-auto tablet:w-auto px-4 py-3 tablet:py-2 rounded-lg text-sm min-h-[44px] transition-colors">
             Cancelar
           </button>
-          <button
-            type="submit"
-            disabled={isSubmitting || isUploading}
-            className="btn-primary w-full landscape:w-auto tablet:w-auto px-4 py-3 tablet:py-2 rounded-lg text-sm font-semibold disabled:opacity-50 min-h-[44px]"
-          >
+          <button type="submit" disabled={isSubmitting || isUploading} className="btn-primary w-full landscape:w-auto tablet:w-auto px-4 py-3 tablet:py-2 rounded-lg text-sm font-semibold disabled:opacity-50 min-h-[44px]">
             {isSubmitting ? "Guardando..." : "Guardar Cambios"}
           </button>
         </div>
@@ -1766,7 +1613,7 @@ function EditInvoiceModal({
   onClose,
   onSaved,
 }: {
-  invoice: { batchId: string; items: Array<{ id: string; productId: string; quantity: number; total: number; abono?: number | null; pendiente?: number | null; product?: { name?: string; line?: string } }> };
+  invoice: { batchId: string; items: Array<{ id: string; tourId: string; quantity: number; total: number; abono?: number | null; pendiente?: number | null; tour?: { name?: string; line?: string } }> };
   products: Product[];
   onClose: () => void;
   onSaved: () => void;
@@ -1778,9 +1625,9 @@ function EditInvoiceModal({
       const pendiente = Math.max(0, total - abono);
       return {
         id: i.id,
-        productId: i.productId,
-        productName: i.product?.name ?? "Producto",
-        productLine: i.product?.line ?? "",
+        productId: i.tourId,
+        productName: i.tour?.name ?? "Producto",
+        productLine: i.tour?.line ?? "",
         quantity: i.quantity,
         unitPrice: i.quantity ? Math.round(total / i.quantity) : 0,
         total,
@@ -1924,7 +1771,7 @@ function EditInvoiceModal({
         body: JSON.stringify({
           items: rows.map((r) => ({
             ...(r.id ? { id: r.id } : {}),
-            productId: r.productId,
+            tourId: r.productId,
             quantity: r.quantity,
             total: r.quantity * r.unitPrice,
             abono: r.abono || undefined,
@@ -2097,7 +1944,7 @@ function EditInvoiceModal({
 }
 
 /** Product type with optional catalog fields for sale form. */
-type ProductWithCatalog = Product & { specialOfferPrice?: number | null; sequence?: number; lowSeatsThreshold?: number | null };
+type ProductWithCatalog = Product & { sequence?: number; lowSeatsThreshold?: number | null };
 
 /**
  * Reusable product dropdown panel for sale form and edit-invoice modal.
@@ -2113,7 +1960,7 @@ function ProductDropdownPanel({
 }: {
   searchTerm: string;
   onSearchChange: (v: string) => void;
-  options: Array<{ product: ProductWithCatalog; price: number; isOffer: boolean }>;
+  options: Array<{ product: ProductWithCatalog; price: number }>;
   existingItems: Array<{ productId: string; unitPrice: number }>;
   onSelect: (productId: string, price: number) => void;
   UNLIMITED_STOCK: number;
@@ -2134,12 +1981,12 @@ function ProductDropdownPanel({
         {options.length === 0 ? (
           <p className="px-3 py-4 text-jet/50 text-sm text-center">No se encontraron productos</p>
         ) : (
-          options.map(({ product: p, price, isOffer }) => {
+          options.map(({ product: p, price }) => {
             const alreadyAdded = existingItems.some((i) => i.productId === p.id && i.unitPrice === price);
             const outOfStock = p.stock === 0;
             return (
               <button
-                key={`${p.id}-${isOffer ? "offer" : "normal"}`}
+                key={p.id}
                 type="button"
                 disabled={outOfStock}
                 onClick={() => onSelect(p.id, price)}
@@ -2153,8 +2000,8 @@ function ProductDropdownPanel({
                     <p className="text-aqua-700 text-xs">{p.line}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className={`font-semibold text-sm ${isOffer ? "text-gold-500" : "text-jet"}`}>
-                      {isOffer ? "Oferta RD$" : "RD$"} {price.toLocaleString()}
+                    <p className="font-semibold text-sm text-jet">
+                      RD$ {price.toLocaleString()}
                     </p>
                     <p className={`text-xs ${outOfStock ? "text-danger" : "text-jet/50"}`}>
                       {outOfStock ? "Sin plazas" : p.stock === UNLIMITED_STOCK ? "Siempre disponible" : `Plazas: ${p.stock}`}
@@ -2174,44 +2021,29 @@ function ProductDropdownPanel({
 }
 
 /**
- * Builds sorted product options for dropdowns. All products with normal price;
- * products with specialOfferPrice also get an offer option. Sorted by sequence, then name.
- * @param products - Filtered products to build options from.
- * @returns Array of { product, price, isOffer } sorted for display.
+ * Builds sorted product options for dropdowns. Sorted by sequence, then name.
  */
 function buildProductOptions(
   products: ProductWithCatalog[]
-): Array<{ product: ProductWithCatalog; price: number; isOffer: boolean }> {
-  const hasOffer = (p: ProductWithCatalog) =>
-    p.specialOfferPrice != null && p.specialOfferPrice > 0;
+): Array<{ product: ProductWithCatalog; price: number }> {
   const seq = (p: ProductWithCatalog) => p.sequence ?? 0;
-  const sortedProducts = [...products].sort(
-    (a, b) =>
-      seq(a) - seq(b) || a.name.localeCompare(b.name) || a.line.localeCompare(b.line)
-  );
-  const options: Array<{ product: ProductWithCatalog; price: number; isOffer: boolean }> = [];
-  for (const p of sortedProducts) {
-    options.push({ product: p, price: p.price, isOffer: false });
-    if (hasOffer(p)) options.push({ product: p, price: p.specialOfferPrice!, isOffer: true });
-  }
-  return options;
+  return [...products]
+    .sort((a, b) => seq(a) - seq(b) || a.name.localeCompare(b.name) || a.line.localeCompare(b.line))
+    .map((p) => ({ product: p, price: p.price }));
 }
 
 /**
  * Sale form component for creating new sales.
  * Allows selecting products, quantities, and all customer/sale info.
- * When defaultSupervisor is provided (e.g. logged-in supervisor), pre-selects it.
  */
 function SaleForm({
   products,
   onClose,
   onComplete,
-  defaultSupervisor,
 }: {
   products: Product[];
   onClose: () => void;
   onComplete: (sale: CompletedSale) => void;
-  defaultSupervisor?: string | null;
 }) {
   // Product selection state
   const [items, setItems] = useState<SaleItem[]>([]);
@@ -2225,7 +2057,6 @@ function SaleForm({
   const [cedula, setCedula] = useState("");
   const [provincia, setProvincia] = useState("");
   const [municipio, setMunicipio] = useState("");
-  const [lugarTrabajo, setLugarTrabajo] = useState("");
 
   // Computed location options based on selections
   const provinciasOptions = useMemo(() => getProvincias(), []);
@@ -2238,34 +2069,7 @@ function SaleForm({
     setMunicipio("");
   }
 
-  const [fechaEntrega, setFechaEntrega] = useState("");
   const [fechaVisita, setFechaVisita] = useState("");
-  const [supervisor, setSupervisor] = useState(defaultSupervisor ?? "");
-  const [supervisorOptions, setSupervisorOptions] = useState<string[]>([]);
-  const [sellerOptions, setSellerOptions] = useState<string[]>([]);
-
-  useEffect(() => {
-    fetch("/api/supervisors")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list: string[]) => {
-        const opts =
-          defaultSupervisor && !list.includes(defaultSupervisor)
-            ? [...list, defaultSupervisor].sort((a, b) => a.localeCompare(b, "es"))
-            : list;
-        setSupervisorOptions(opts);
-      })
-      .catch(() => {});
-  }, [defaultSupervisor]);
-
-  useEffect(() => {
-    fetch("/api/sellers")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: Array<{ id: string; name: string }>) =>
-        setSellerOptions(data.map((s) => s.name))
-      )
-      .catch(() => {});
-  }, []);
-  const [nombreVendedor, setNombreVendedor] = useState("");
 
   // Optional fields
   const [customerAddress, setCustomerAddress] = useState("");
@@ -2306,6 +2110,7 @@ function SaleForm({
   /**
    * Adds a product to the sale. When unitPrice is provided (e.g. special offer), uses that price;
    * otherwise uses product.price. Same product with different prices creates separate line items.
+   * If the product has tourDate and "Fecha del Tour" is empty, pre-fills it from the tour.
    */
   function handleAddProduct(productId: string, unitPrice?: number) {
     const product = products.find((p) => p.id === productId);
@@ -2339,6 +2144,12 @@ function SaleForm({
           pendiente: price, // total - abono
         },
       ]);
+      // Pre-fill Fecha del Tour from the selected tour when empty
+      const p = product as Product & { tourDate?: Date | string | null };
+      if (p.tourDate && !fechaVisita) {
+        const d = typeof p.tourDate === "string" ? new Date(p.tourDate) : p.tourDate;
+        if (!isNaN(d.getTime())) setFechaVisita(d.toISOString().slice(0, 10));
+      }
     }
   }
 
@@ -2406,14 +2217,7 @@ function SaleForm({
     if (items.length === 0) invalid.add("items");
     if (!customerName.trim()) invalid.add("customerName");
     if (!customerPhone.trim()) invalid.add("customerPhone");
-    if (!cedula.trim()) invalid.add("cedula");
-    if (!provincia.trim()) invalid.add("provincia");
-    if (!municipio.trim()) invalid.add("municipio");
-    if (!lugarTrabajo.trim()) invalid.add("lugarTrabajo");
-    if (!fechaEntrega) invalid.add("fechaEntrega");
     if (!fechaVisita) invalid.add("fechaVisita");
-    if (!supervisor.trim()) invalid.add("supervisor");
-    if (!nombreVendedor.trim()) invalid.add("nombreVendedor");
 
     if (invalid.size === 0) {
       return { error: null, invalidFields: invalid };
@@ -2423,14 +2227,7 @@ function SaleForm({
     if (invalid.has("items")) return { error: "Agrega al menos un producto", invalidFields: invalid };
     if (invalid.has("customerName")) return { error: "El nombre del cliente es requerido", invalidFields: invalid };
     if (invalid.has("customerPhone")) return { error: "El teléfono es requerido", invalidFields: invalid };
-    if (invalid.has("cedula")) return { error: "La cédula es requerida", invalidFields: invalid };
-    if (invalid.has("provincia")) return { error: "La provincia es requerida", invalidFields: invalid };
-    if (invalid.has("municipio")) return { error: "El municipio es requerido", invalidFields: invalid };
-    if (invalid.has("lugarTrabajo")) return { error: "El lugar de trabajo es requerido", invalidFields: invalid };
-    if (invalid.has("fechaEntrega")) return { error: "La fecha de entrega es requerida", invalidFields: invalid };
-    if (invalid.has("fechaVisita")) return { error: "La fecha de visita es requerida", invalidFields: invalid };
-    if (invalid.has("supervisor")) return { error: "El supervisor es requerido", invalidFields: invalid };
-    if (invalid.has("nombreVendedor")) return { error: "El nombre del vendedor es requerido", invalidFields: invalid };
+    if (invalid.has("fechaVisita")) return { error: "La fecha del tour es requerida", invalidFields: invalid };
 
     return { error: "Por favor completa los campos requeridos", invalidFields: invalid };
   }
@@ -2458,10 +2255,9 @@ function SaleForm({
       const next = new Set(prev);
       if (provincia.trim() && next.has("provincia")) next.delete("provincia");
       if (municipio.trim() && next.has("municipio")) next.delete("municipio");
-      if (supervisor.trim() && next.has("supervisor")) next.delete("supervisor");
       return next.size === prev.size ? prev : next;
     });
-  }, [provincia, municipio, supervisor]);
+  }, [provincia, municipio]);
 
   /**
    * Submits the sale to the API.
@@ -2484,7 +2280,7 @@ function SaleForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: items.map((i) => ({
-            productId: i.productId,
+            tourId: i.productId,
             quantity: i.quantity,
             total: i.total,
             abono: i.abono || undefined,
@@ -2493,15 +2289,11 @@ function SaleForm({
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
           cedula: cedula.trim(),
-          provincia: provincia.trim(),
-          municipio: municipio.trim(),
+          provincia: provincia.trim() || undefined,
+          municipio: municipio.trim() || undefined,
           customerAddress: customerAddress.trim() || undefined,
-          lugarTrabajo: lugarTrabajo.trim(),
           notes: notes.trim() || undefined,
-          fechaEntrega,
           fechaVisita,
-          supervisor,
-          nombreVendedor: nombreVendedor.trim(),
           isPaid,
         }),
       });
@@ -2513,6 +2305,7 @@ function SaleForm({
 
       const data = await res.json();
 
+      const today = new Date().toISOString().slice(0, 10);
       onComplete({
         id: data.id,
         items,
@@ -2523,12 +2316,9 @@ function SaleForm({
         provincia: provincia.trim(),
         municipio: municipio.trim(),
         customerAddress: customerAddress.trim() || undefined,
-        lugarTrabajo: lugarTrabajo.trim(),
         notes: notes.trim() || undefined,
-        fechaEntrega,
+        fechaReserva: today,
         fechaVisita,
-        supervisor,
-        nombreVendedor: nombreVendedor.trim(),
         isPaid,
         date: formatDateTime(new Date()),
       });
@@ -2553,7 +2343,7 @@ function SaleForm({
 
   return (
     <div className="bg-porcelain rounded-xl border border-gold-200/50 shadow-sm p-4 tablet:p-5 tablet-lg:p-6 overflow-hidden">
-      <h3 className="text-lg font-semibold text-jet mb-4">Nueva Venta</h3>
+      <h3 className="text-lg font-semibold text-jet mb-4">Nueva Reserva</h3>
 
       {error && (
         <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm mb-4">
@@ -2733,7 +2523,7 @@ function SaleForm({
 
           <div>
             <label className="block text-sm font-medium text-jet/80 mb-1">
-              Cédula <span className="text-danger">*</span>
+              Cédula/Passaporte
             </label>
             <input
               type="text"
@@ -2741,20 +2531,19 @@ function SaleForm({
               onChange={(e) => setCedula(e.target.value)}
               onFocus={() => clearFieldError("cedula")}
               className={`w-full bg-pearl border rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500 ${getBorderClass("cedula", cedula)}`}
-              placeholder="001-0000000-0"
+              placeholder="001-0000000-0 o pasaporte"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-jet/80 mb-1">
-              Provincia <span className="text-danger">*</span>
+              Provincia
             </label>
             <SearchableSelect
               value={provincia}
               onChange={(v) => { handleProvinciaChange(v); clearFieldError("provincia"); }}
               options={provinciasOptions}
               placeholder="Buscar provincia..."
-              required
               error={fieldErrors.has("provincia")}
               onFocus={() => clearFieldError("provincia")}
             />
@@ -2762,7 +2551,7 @@ function SaleForm({
 
           <div>
             <label className="block text-sm font-medium text-jet/80 mb-1">
-              Municipio <span className="text-danger">*</span>
+              Municipio
             </label>
             <input
               type="text"
@@ -2790,20 +2579,6 @@ function SaleForm({
 
           <div>
             <label className="block text-sm font-medium text-jet/80 mb-1">
-              Lugar de Trabajo <span className="text-danger">*</span>
-            </label>
-            <input
-              type="text"
-              value={lugarTrabajo}
-              onChange={(e) => setLugarTrabajo(e.target.value)}
-              onFocus={() => clearFieldError("lugarTrabajo")}
-              className={`w-full bg-pearl border rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500 ${getBorderClass("lugarTrabajo", lugarTrabajo)}`}
-              placeholder="Lugar de trabajo"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-jet/80 mb-1">
               Referencia/Nota
             </label>
             <textarea
@@ -2822,20 +2597,21 @@ function SaleForm({
 
           <div>
             <label className="block text-sm font-medium text-jet/80 mb-1">
-              Fecha de Entrega <span className="text-danger">*</span>
+              Fecha de Reserva
             </label>
             <input
               type="date"
-              value={fechaEntrega}
-              onChange={(e) => setFechaEntrega(e.target.value)}
-              onFocus={() => clearFieldError("fechaEntrega")}
-              className={`w-full bg-pearl border rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500 ${fieldErrors.has("fechaEntrega") ? "border-danger" : fechaEntrega ? "border-success/50" : "border-gold-200/50"}`}
+              value={new Date().toISOString().slice(0, 10)}
+              readOnly
+              className="w-full bg-pearl/70 border border-gold-200/50 rounded-lg px-3 py-2 text-jet/70 text-sm cursor-not-allowed"
+              title="Se registra automáticamente al completar la reserva"
             />
+            <p className="text-jet/50 text-xs mt-0.5">Automática (fecha de creación)</p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-jet/80 mb-1">
-              Fecha de Visita <span className="text-danger">*</span>
+              Fecha del Tour <span className="text-danger">*</span>
             </label>
             <input
               type="date"
@@ -2843,36 +2619,7 @@ function SaleForm({
               onChange={(e) => setFechaVisita(e.target.value)}
               onFocus={() => clearFieldError("fechaVisita")}
               className={`w-full bg-pearl border rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500 ${fieldErrors.has("fechaVisita") ? "border-danger" : fechaVisita ? "border-success/50" : "border-gold-200/50"}`}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-jet/80 mb-1">
-              Supervisor <span className="text-danger">*</span>
-            </label>
-            <SearchableSelect
-              value={supervisor}
-              onChange={(v) => { setSupervisor(v); clearFieldError("supervisor"); }}
-              options={supervisorOptions}
-              placeholder="Seleccionar supervisor..."
-              required
-              error={fieldErrors.has("supervisor")}
-              onFocus={() => clearFieldError("supervisor")}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-jet/80 mb-1">
-              Nombre del Vendedor <span className="text-danger">*</span>
-            </label>
-            <SearchableSelect
-              value={nombreVendedor}
-              onChange={(v) => { setNombreVendedor(v); clearFieldError("nombreVendedor"); }}
-              options={sellerOptions}
-              placeholder="Seleccionar vendedor..."
-              required
-              error={fieldErrors.has("nombreVendedor")}
-              onFocus={() => clearFieldError("nombreVendedor")}
+              title="Puede completarse desde el tour seleccionado si tiene fecha definida"
             />
           </div>
 
@@ -2895,7 +2642,7 @@ function SaleForm({
             <p className="text-white/80 text-sm">Total</p>
             <p className="text-2xl font-bold">RD$ {subtotal.toLocaleString()}</p>
             <p className="text-white/70 text-xs mt-1">
-              {items.reduce((sum, i) => sum + i.quantity, 0)} productos
+              {items.reduce((sum, i) => sum + i.quantity, 0)} cupos
             </p>
             {totalAbono > 0 && (
               <p className="text-white/80 text-xs mt-2">
@@ -2997,16 +2744,13 @@ function Invoice({
                   <p className="text-jet/70 text-sm">📞 {sale.customerPhone}</p>
                 )}
                 {sale.cedula && (
-                  <p className="text-jet/70 text-sm">🪪 Cédula: {sale.cedula}</p>
+                  <p className="text-jet/70 text-sm">🪪 Cédula/Passaporte: {sale.cedula}</p>
                 )}
                 {sale.provincia && sale.municipio && (
                   <p className="text-jet/70 text-sm">📍 {sale.municipio}, {sale.provincia}</p>
                 )}
                 {sale.customerAddress && (
                   <p className="text-jet/70 text-sm">🏠 {sale.customerAddress}</p>
-                )}
-                {sale.lugarTrabajo && (
-                  <p className="text-jet/70 text-sm">💼 Trabajo: {sale.lugarTrabajo}</p>
                 )}
               </>
             ) : (

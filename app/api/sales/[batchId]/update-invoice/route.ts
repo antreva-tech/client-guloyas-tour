@@ -59,7 +59,6 @@ export async function PATCH(
     if (updates.provincia !== undefined) data.provincia = updates.provincia;
     if (updates.municipio !== undefined) data.municipio = updates.municipio;
     if (updates.customerAddress !== undefined) data.customerAddress = updates.customerAddress;
-    if (updates.lugarTrabajo !== undefined) data.lugarTrabajo = updates.lugarTrabajo;
     if (updates.notes !== undefined) data.notes = updates.notes;
     if (updates.fechaEntrega !== undefined) data.fechaEntrega = updates.fechaEntrega ? new Date(updates.fechaEntrega) : null;
     if (updates.fechaVisita !== undefined) data.fechaVisita = updates.fechaVisita ? new Date(updates.fechaVisita) : null;

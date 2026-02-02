@@ -1,10 +1,8 @@
 // Guloyas Tours — Operations database (tours + bookings + WhatsApp)
 // Database: Neon Postgres
 //
-// Domain semantics (see docs/ and plan):
-// - Product = tour/excursion; stock = seats/capacity, sold = booked (column names kept for compatibility).
-// - Sale = booking/reservation line; batchId groups lines into one invoice.
-// - AdminSettings.lowStockThreshold = default low-seats threshold when Product.lowSeatsThreshold is null.
+// Domain semantics: Tour = tour/excursion; Sale = booking/reservation line (batchId = invoice).
+// AdminSettings.lowStockThreshold = default low-seats threshold when Tour.lowSeatsThreshold is null.
 
 generator client {
   provider = "prisma-client-js"
@@ -16,83 +14,75 @@ datasource db {
   url       = env("DATABASE_URL")
 }
 
-/// Tour or excursion in the catalog (table name "products" kept for compatibility).
-/// Semantics: stock = seats/capacity, sold = booked.
-model Product {
-  id          String   @id @default(cuid())
-  name        String
-  line        String   /// Product line/category (e.g. tour type)
-  description String
-  price       Int
-  specialOfferPrice Int?  /// Optional special price; shown in booking dropdown when set
-  currency    String   @default("RD$")
-  imageUrl    String?
-  stock       Int      @default(0)   /// Seats/capacity
-  sold        Int      @default(0)   /// Booked count
-  isActive    Boolean  @default(true)
-  sequence    Int      @default(0)   /// Display order in catalog (lower = first)
-  lowSeatsThreshold Int?  /// Per-tour threshold for "low seats" badge (null = use default or hide)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  sales       Sale[]
+/// Tour/excursion in the catalog. stock = seats/capacity, sold = booked.
+model Tour {
+  id                String   @id @default(cuid())
+  name              String
+  line              String   @default("Tour") /// Category label (e.g. tour type)
+  description       String
+  price             Int      /// Adult price (Precio Adultos)
+  childPrice        Int?     /// Optional children price (Precio Niños)
+  currency          String   @default("RD$")
+  imageUrls         String[] @default([]) /// Multiple tour images (swipeable on card)
+  stock             Int      @default(0)   /// Seats/capacity
+  sold              Int      @default(0)   /// Booked count
+  isActive          Boolean  @default(true)
+  sequence          Int      @default(0)   /// Display order in catalog (lower = first)
+  lowSeatsThreshold Int?     /// Per-tour threshold for "low seats" badge (null = use default)
+  tourDate          DateTime? /// Default date; pre-fills "Fecha del Tour" when booking
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  sales             Sale[]
 
-  /// Index for active products sorted by creation date (catalog queries)
   @@index([isActive, createdAt])
-  @@map("products")
+  @@map("tours")
 }
 
 /// Booking/reservation line (one row per tour/quantity); batchId groups lines into one invoice.
-/// New fields are nullable in DB for backward compatibility; API validation requires them for new bookings.
 model Sale {
-  id              String    @id @default(cuid())
-  batchId         String    @default(cuid())
-  productId       String
-  quantity        Int
-  total           Int
-  abono           Int?      /// Partial payment amount ($)
-  pendiente       Int?      /// Pending amount ($)
-  customerName    String?   /// Customer name (required via API)
-  customerPhone   String?   /// Phone (required via API)
-  cedula          String?   /// Cedula/ID number (required via API)
-  provincia       String?   /// Province (required via API, dropdown)
-  municipio       String?   /// Municipality (required via API, free-form text)
-  customerAddress String?   /// Optional address (Direccion)
-  lugarTrabajo    String?   /// Workplace (required via API)
-  notes           String?   /// Optional referencia/nota
-  fechaEntrega    DateTime? /// Delivery date (required via API)
-  fechaVisita     DateTime? /// Visit date (required via API)
-  supervisor      String?   /// Supervisor (required via API)
-  nombreVendedor  String?   /// Seller name (required via API)
-  isPaid          Boolean   @default(false) /// Payment status flag
-  voidedAt        DateTime?
-  voidReason      String?
-  createdAt       DateTime  @default(now())
-  product         Product   @relation(fields: [productId], references: [id])
+  id               String    @id @default(cuid())
+  batchId          String    @default(cuid())
+  tourId           String
+  quantity         Int
+  total            Int
+  abono            Int?      /// Partial payment amount ($)
+  pendiente        Int?      /// Pending amount ($)
+  customerName     String?
+  customerPhone    String?
+  cedula           String?
+  provincia        String?
+  municipio        String?
+  customerAddress  String?
+  notes            String?
+  fechaEntrega     DateTime?
+  fechaVisita      DateTime? /// Tour date (required via API; may be sourced from Tour.tourDate)
+  supervisor       String?
+  nombreVendedor   String?
+  isPaid           Boolean   @default(false)
+  voidedAt         DateTime?
+  voidReason       String?
+  createdAt        DateTime  @default(now())
+  tour             Tour      @relation(fields: [tourId], references: [id])
 
-  /// Index for date-based booking queries
   @@index([createdAt])
-  /// Index for batch lookup (void operations)
   @@index([batchId])
-  /// Index for product-based booking queries
-  @@index([productId])
-  /// Index for supervisor filtering
+  @@index([tourId])
   @@index([supervisor])
-  /// Index for payment status filtering
   @@index([isPaid])
   @@map("sales")
 }
 
 /// Monthly revenue/bookings snapshot for historical tracking
 model MonthlySummary {
-  id            String   @id @default(cuid())
-  year          Int
-  month         Int
-  totalRevenue  Int
-  totalSold     Int
-  totalProducts Int
-  topProductId  String?
-  topProductSold Int     @default(0)
-  createdAt     DateTime @default(now())
+  id             String   @id @default(cuid())
+  year           Int
+  month          Int
+  totalRevenue   Int
+  totalSold      Int
+  totalTours      Int
+  topTourId      String?
+  topTourSold    Int      @default(0)
+  createdAt      DateTime @default(now())
 
   @@unique([year, month])
   @@map("monthly_summaries")
@@ -134,7 +124,7 @@ model Seller {
   @@map("sellers")
 }
 
-/// Admin settings for dashboard. lowStockThreshold = default low-seats threshold when Product.lowSeatsThreshold is null (UI: "Umbral de plazas bajas (por defecto)").
+/// Admin settings. lowStockThreshold = default low-seats threshold when Tour.lowSeatsThreshold is null.
 model AdminSettings {
   id                 String   @id @default("default")
   lowStockThreshold  Int      @default(5)  /// Default low-seats threshold for tours
@@ -148,17 +138,17 @@ model AdminSettings {
 model WhatsAppMessageLog {
   id             String   @id @default(cuid())
   direction      String   /// "outbound" | "inbound"
-  externalId     String?  /// Meta message ID
+  externalId     String?
   batchId        String?
-  productId      String?
+  tourId         String?
   customerPhone  String
-  body           String?  /// Message text or template name
+  body           String?
   status         String   /// "sent" | "delivered" | "read" | "failed"
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([batchId])
-  @@index([productId])
+  @@index([tourId])
   @@index([customerPhone])
   @@index([createdAt])
   @@map("whatsapp_message_log")

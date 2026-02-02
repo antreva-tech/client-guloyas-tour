@@ -28,7 +28,7 @@ interface ProductInfo {
 interface SaleRecord {
   id: string;
   batchId: string;
-  productId: string;
+  tourId: string;
   quantity: number;
   total: number;
   abono?: number | null;
@@ -39,7 +39,6 @@ interface SaleRecord {
   provincia: string;
   municipio: string;
   customerAddress?: string | null;
-  lugarTrabajo: string;
   notes?: string | null;
   fechaEntrega: string;
   fechaVisita: string;
@@ -49,7 +48,7 @@ interface SaleRecord {
   createdAt: string;
   voidedAt?: string | null;
   voidReason?: string | null;
-  product?: ProductInfo;
+  tour?: ProductInfo;
 }
 
 /**
@@ -71,7 +70,6 @@ interface InvoiceSummary {
   provincia: string;
   municipio: string;
   customerAddress: string;
-  lugarTrabajo: string;
   notes: string;
   fechaEntrega: string;
   fechaVisita: string;
@@ -188,7 +186,6 @@ function groupSalesByBatch(
         provincia: sale.provincia || "",
         municipio: sale.municipio || "",
         customerAddress: customerAddress || "",
-        lugarTrabajo: sale.lugarTrabajo || "",
         notes,
         fechaEntrega: sale.fechaEntrega || "",
         fechaVisita: sale.fechaVisita || "",
@@ -711,15 +708,15 @@ export function InvoiceHistoryPanel({
       });
     }
 
-    // Supervisor filter
-    if (selectedSupervisor !== "all") {
+    // Supervisor filter (only when supervisor/seller UI is used)
+    if (showSupervisorFilter && selectedSupervisor !== "all") {
       filtered = filtered.filter(
         (invoice) => (invoice.supervisor || "").trim() === selectedSupervisor
       );
     }
 
-    // Nombre vendedor filter: include invoices that match or partially match (includes in either direction)
-    if (nombreVendedorFilter && nombreVendedorFilter !== "all") {
+    // Nombre vendedor filter (only when supervisor/seller UI is used)
+    if (showSupervisorFilter && nombreVendedorFilter && nombreVendedorFilter !== "all") {
       const filterVal = nombreVendedorFilter.trim().toLowerCase();
       filtered = filtered.filter((invoice) => {
         const invVal = (invoice.nombreVendedor || "").trim().toLowerCase();
@@ -746,7 +743,7 @@ export function InvoiceHistoryPanel({
     }
 
     return filtered;
-  }, [invoices, searchTerm, selectedMonth, dateVisita, selectedSupervisor, nombreVendedorFilter, selectedProvincia, selectedPaymentStatus]);
+  }, [invoices, searchTerm, selectedMonth, dateVisita, selectedSupervisor, nombreVendedorFilter, selectedProvincia, selectedPaymentStatus, showSupervisorFilter]);
 
   const selectedInvoice = useMemo(
     () => filteredInvoices.find((i) => i.batchId === selectedBatchId) ?? null,
@@ -766,7 +763,9 @@ export function InvoiceHistoryPanel({
     setSelectedPaymentStatus("all");
   }
 
-  const hasActiveFilters = searchTerm || selectedMonth !== "all" || dateVisita || selectedSupervisor !== "all" || (nombreVendedorFilter && nombreVendedorFilter !== "all") || (selectedProvincia && selectedProvincia !== "all") || selectedPaymentStatus !== "all";
+  const hasActiveFilters = searchTerm || selectedMonth !== "all" || dateVisita
+    || (showSupervisorFilter && (selectedSupervisor !== "all" || (nombreVendedorFilter && nombreVendedorFilter !== "all")))
+    || (selectedProvincia && selectedProvincia !== "all") || selectedPaymentStatus !== "all";
 
   /** Reset to page 1 when filters change. */
   useEffect(() => {
@@ -946,17 +945,19 @@ export function InvoiceHistoryPanel({
               </div>
             )}
 
-            {/* Nombre vendedor filter - options from invoices + Seller table for accurate matching */}
-            <div className="min-w-0">
-              <label className="block text-xs text-jet/60 mb-1">Nombre vendedor</label>
-              <FilterSelect
-                value={nombreVendedorFilter}
-                onChange={setNombreVendedorFilter}
-                options={sellerOptions}
-                allLabel="Todos los vendedores"
-                placeholder="Buscar vendedor..."
-              />
-            </div>
+            {/* Nombre vendedor filter - hidden when supervisor/seller not used */}
+            {showSupervisorFilter && (
+              <div className="min-w-0">
+                <label className="block text-xs text-jet/60 mb-1">Nombre vendedor</label>
+                <FilterSelect
+                  value={nombreVendedorFilter}
+                  onChange={setNombreVendedorFilter}
+                  options={sellerOptions}
+                  allLabel="Todos los vendedores"
+                  placeholder="Buscar vendedor..."
+                />
+              </div>
+            )}
 
             {/* Province filter */}
             <div className="min-w-0">
@@ -1062,12 +1063,12 @@ export function InvoiceHistoryPanel({
                       Tel: {invoice.customerPhone}
                     </p>
                   )}
-                  {invoice.supervisor && (
+                  {showSupervisorFilter && invoice.supervisor && (
                     <p className="text-aqua-700 text-xs mt-0.5">
                       Sup: {invoice.supervisor}
                     </p>
                   )}
-                  {invoice.nombreVendedor && !isCreadoporValue(invoice.nombreVendedor) && (
+                  {showSupervisorFilter && invoice.nombreVendedor && !isCreadoporValue(invoice.nombreVendedor) && (
                     <p className="text-jet/60 text-xs mt-0.5">
                       Vendedor: {invoice.nombreVendedor}
                     </p>
@@ -1135,6 +1136,7 @@ export function InvoiceHistoryPanel({
           onVoidReasonChange={setVoidReason}
           showVoidActions={showVoidActions}
           showDeleteVoidedActions={showDeleteVoidedActions}
+          showSupervisorFilter={showSupervisorFilter}
           supervisorOptions={supervisorOptions}
           sellerOptions={sellerOptions}
           provinciasOptions={provinciasOptions}
@@ -1165,6 +1167,7 @@ function InvoiceDetailModal({
   onVoidReasonChange,
   showVoidActions,
   showDeleteVoidedActions,
+  showSupervisorFilter = true,
   supervisorOptions,
   sellerOptions,
   provinciasOptions,
@@ -1184,6 +1187,7 @@ function InvoiceDetailModal({
   onVoidReasonChange: (value: string) => void;
   showVoidActions: boolean;
   showDeleteVoidedActions: boolean;
+  showSupervisorFilter?: boolean;
   supervisorOptions: { value: string; label: string }[];
   sellerOptions: { value: string; label: string }[];
   provinciasOptions: { value: string; label: string }[];
@@ -1213,7 +1217,6 @@ function InvoiceDetailModal({
     provincia: invoice.provincia || "",
     municipio: invoice.municipio || "",
     customerAddress: invoice.customerAddress || "",
-    lugarTrabajo: invoice.lugarTrabajo || "",
     notes: invoice.notes || "",
   });
   const [editSale, setEditSale] = useState({
@@ -1234,7 +1237,6 @@ function InvoiceDetailModal({
       provincia: invoice.provincia || "",
       municipio: invoice.municipio || "",
       customerAddress: invoice.customerAddress || "",
-      lugarTrabajo: invoice.lugarTrabajo || "",
       notes: invoice.notes || "",
     });
     setEditSale({
@@ -1243,7 +1245,7 @@ function InvoiceDetailModal({
       supervisor: invoice.supervisor || "",
       nombreVendedor: invoice.nombreVendedor || "",
     });
-  }, [invoice.batchId, invoice.customerLabel, invoice.customerPhone, invoice.cedula, invoice.provincia, invoice.municipio, invoice.customerAddress, invoice.lugarTrabajo, invoice.notes, invoice.fechaEntrega, invoice.fechaVisita, invoice.supervisor, invoice.nombreVendedor, invoice.whatsappCount, invoice.callCount]);
+  }, [invoice.batchId, invoice.customerLabel, invoice.customerPhone, invoice.cedula, invoice.provincia, invoice.municipio, invoice.customerAddress, invoice.notes, invoice.fechaEntrega, invoice.fechaVisita, invoice.supervisor, invoice.nombreVendedor, invoice.whatsappCount, invoice.callCount]);
 
   const dateLabel = formatDateTime(invoice.createdAt);
   const voidedDateLabel = invoice.voidedAt ? formatDateTime(invoice.voidedAt) : null;
@@ -1256,7 +1258,7 @@ function InvoiceDetailModal({
     const invoiceId = invoice.batchId.slice(-8).toUpperCase();
     const itemsList = invoice.items
       .map((item) => {
-        const name = item.product?.name || "Producto";
+        const name = item.tour?.name || "Producto";
         const qty = item.quantity;
         const total = item.total;
         return `• ${name} x${qty} — RD$ ${total.toLocaleString()}`;
@@ -1374,7 +1376,6 @@ function InvoiceDetailModal({
           provincia: editCliente.provincia.trim(),
           municipio: editCliente.municipio.trim(),
           customerAddress: editCliente.customerAddress.trim() || null,
-          lugarTrabajo: editCliente.lugarTrabajo.trim(),
           notes: editCliente.notes.trim() || null,
         }),
       });
@@ -1405,8 +1406,9 @@ function InvoiceDetailModal({
         body: JSON.stringify({
           fechaEntrega: editSale.fechaEntrega || null,
           fechaVisita: editSale.fechaVisita || null,
-          supervisor: editSale.supervisor.trim(),
-          nombreVendedor: editSale.nombreVendedor.trim(),
+          ...(showSupervisorFilter
+            ? { supervisor: editSale.supervisor.trim(), nombreVendedor: editSale.nombreVendedor.trim() }
+            : {}),
         }),
       });
       if (!res.ok) {
@@ -1653,7 +1655,7 @@ function InvoiceDetailModal({
                   type="text"
                   value={editCliente.cedula}
                   onChange={(e) => setEditCliente((c) => ({ ...c, cedula: e.target.value }))}
-                  placeholder="Cédula"
+                  placeholder="Cédula/Passaporte"
                   className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
                 />
                 <select
@@ -1678,13 +1680,6 @@ function InvoiceDetailModal({
                   value={editCliente.customerAddress}
                   onChange={(e) => setEditCliente((c) => ({ ...c, customerAddress: e.target.value }))}
                   placeholder="Dirección"
-                  className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
-                />
-                <input
-                  type="text"
-                  value={editCliente.lugarTrabajo}
-                  onChange={(e) => setEditCliente((c) => ({ ...c, lugarTrabajo: e.target.value }))}
-                  placeholder="Lugar de trabajo"
                   className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
                 />
                 <input
@@ -1715,7 +1710,6 @@ function InvoiceDetailModal({
                         provincia: invoice.provincia || "",
                         municipio: invoice.municipio || "",
                         customerAddress: invoice.customerAddress || "",
-                        lugarTrabajo: invoice.lugarTrabajo || "",
                         notes: invoice.notes || "",
                       });
                     }}
@@ -1835,7 +1829,7 @@ function InvoiceDetailModal({
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 text-sm">
               {invoice.cedula && (
                 <p className="text-jet/70">
-                  <span className="text-jet/50">Cédula:</span> {invoice.cedula}
+                  <span className="text-jet/50">Cédula/Passaporte:</span> {invoice.cedula}
                 </p>
               )}
               {invoice.provincia && (
@@ -1846,11 +1840,6 @@ function InvoiceDetailModal({
               {invoice.municipio && (
                 <p className="text-jet/70">
                   <span className="text-jet/50">Municipio:</span> {invoice.municipio}
-                </p>
-              )}
-              {invoice.lugarTrabajo && (
-                <p className="text-jet/70">
-                  <span className="text-jet/50">Trabajo:</span> {invoice.lugarTrabajo}
                 </p>
               )}
             </div>
@@ -1887,7 +1876,7 @@ function InvoiceDetailModal({
             {isEditingSale ? (
               <form onSubmit={handleSaveSale} className="space-y-2">
                 <div>
-                  <label className="block text-jet/60 text-xs mb-0.5">Entrega</label>
+                  <label className="block text-jet/60 text-xs mb-0.5">Reserva</label>
                   <input
                     type="date"
                     value={editSale.fechaEntrega}
@@ -1896,7 +1885,7 @@ function InvoiceDetailModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-jet/60 text-xs mb-0.5">Visita</label>
+                  <label className="block text-jet/60 text-xs mb-0.5">Tour</label>
                   <input
                     type="date"
                     value={editSale.fechaVisita}
@@ -1904,32 +1893,36 @@ function InvoiceDetailModal({
                     className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
                   />
                 </div>
-                <div>
-                  <label className="block text-jet/60 text-xs mb-0.5">Supervisor</label>
-                  <select
-                    value={editSale.supervisor}
-                    onChange={(e) => setEditSale((s) => ({ ...s, supervisor: e.target.value }))}
-                    className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
-                  >
-                    <option value="">Seleccionar...</option>
-                    {supervisorOptions.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-jet/60 text-xs mb-0.5">Nombre Vendedor</label>
-                  <select
-                    value={editSale.nombreVendedor}
-                    onChange={(e) => setEditSale((s) => ({ ...s, nombreVendedor: e.target.value }))}
-                    className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
-                  >
-                    <option value="">Seleccionar...</option>
-                    {sellerOptions.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </div>
+                {showSupervisorFilter && (
+                  <>
+                    <div>
+                      <label className="block text-jet/60 text-xs mb-0.5">Supervisor</label>
+                      <select
+                        value={editSale.supervisor}
+                        onChange={(e) => setEditSale((s) => ({ ...s, supervisor: e.target.value }))}
+                        className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
+                      >
+                        <option value="">Seleccionar...</option>
+                        {supervisorOptions.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-jet/60 text-xs mb-0.5">Nombre Vendedor</label>
+                      <select
+                        value={editSale.nombreVendedor}
+                        onChange={(e) => setEditSale((s) => ({ ...s, nombreVendedor: e.target.value }))}
+                        className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
+                      >
+                        <option value="">Seleccionar...</option>
+                        {sellerOptions.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
                 {invoiceEditError && <p className="text-danger text-xs">{invoiceEditError}</p>}
                 <div className="flex gap-2">
                   <button
@@ -1961,20 +1954,20 @@ function InvoiceDetailModal({
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
               {invoice.fechaEntrega && (
                 <p className="text-jet/70">
-                  <span className="text-jet/50">Entrega:</span> {formatDate(invoice.fechaEntrega)}
+                  <span className="text-jet/50">Reserva:</span> {formatDate(invoice.fechaEntrega)}
                 </p>
               )}
               {invoice.fechaVisita && (
                 <p className="text-jet/70">
-                  <span className="text-jet/50">Visita:</span> {formatDate(invoice.fechaVisita)}
+                  <span className="text-jet/50">Tour:</span> {formatDate(invoice.fechaVisita)}
                 </p>
               )}
-              {invoice.supervisor && (
+              {showSupervisorFilter && invoice.supervisor && (
                 <p className="text-jet/70">
                   <span className="text-jet/50">Supervisor:</span> {invoice.supervisor}
                 </p>
               )}
-              {invoice.nombreVendedor && !isCreadoporValue(invoice.nombreVendedor) && (
+              {showSupervisorFilter && invoice.nombreVendedor && !isCreadoporValue(invoice.nombreVendedor) && (
                 <p className="text-jet/70">
                   <span className="text-jet/50">Nombre Vendedor:</span> {invoice.nombreVendedor}
                 </p>
@@ -1999,10 +1992,10 @@ function InvoiceDetailModal({
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className={`text-jet font-medium text-sm ${invoice.isVoided ? "line-through" : ""}`}>
-                        {item.product?.name || "Producto desconocido"}
+                        {item.tour?.name || "Producto desconocido"}
                       </p>
                       <p className="text-aqua-700 text-xs">
-                        {item.product?.line || "—"}
+                        {item.tour?.line || "—"}
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
@@ -2010,7 +2003,7 @@ function InvoiceDetailModal({
                         RD$ {item.total.toLocaleString()}
                       </p>
                       <p className="text-jet/50 text-xs">
-                        {item.quantity} × RD$ {item.product?.price?.toLocaleString() || "—"}
+                        {item.quantity} × RD$ {item.tour?.price?.toLocaleString() || "—"}
                       </p>
                     </div>
                   </div>
@@ -2255,16 +2248,13 @@ function InvoiceDetailModal({
                 <p style={{ fontSize: "11px", color: "#4b5563" }}>Tel: {invoice.customerPhone}</p>
               )}
               {invoice.cedula && (
-                <p style={{ fontSize: "11px", color: "#4b5563" }}>Cédula: {invoice.cedula}</p>
+                <p style={{ fontSize: "11px", color: "#4b5563" }}>Cédula/Passaporte: {invoice.cedula}</p>
               )}
               {invoice.provincia && invoice.municipio && (
                 <p style={{ fontSize: "11px", color: "#4b5563" }}>{invoice.municipio}, {invoice.provincia}</p>
               )}
               {invoice.customerAddress && (
                 <p style={{ fontSize: "11px", color: "#4b5563" }}>{invoice.customerAddress}</p>
-              )}
-              {invoice.lugarTrabajo && (
-                <p style={{ fontSize: "11px", color: "#4b5563" }}>Trabajo: {invoice.lugarTrabajo}</p>
               )}
               {invoice.notes && (
                 <p style={{ fontSize: "11px", color: "#6b7280", marginTop: "4px" }}>
@@ -2282,15 +2272,15 @@ function InvoiceDetailModal({
               </h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px", fontSize: "11px", color: "#4b5563" }}>
                 {invoice.fechaEntrega && (
-                  <p>Entrega: {formatDate(invoice.fechaEntrega)}</p>
+                  <p>Reserva: {formatDate(invoice.fechaEntrega)}</p>
                 )}
                 {invoice.fechaVisita && (
-                  <p>Visita: {formatDate(invoice.fechaVisita)}</p>
+                  <p>Tour: {formatDate(invoice.fechaVisita)}</p>
                 )}
-                {invoice.supervisor && (
+                {showSupervisorFilter && invoice.supervisor && (
                   <p>Supervisor: {invoice.supervisor}</p>
                 )}
-                {invoice.nombreVendedor && !isCreadoporValue(invoice.nombreVendedor) && (
+                {showSupervisorFilter && invoice.nombreVendedor && !isCreadoporValue(invoice.nombreVendedor) && (
                   <p>Nombre Vendedor: {invoice.nombreVendedor}</p>
                 )}
               </div>
@@ -2335,17 +2325,17 @@ function InvoiceDetailModal({
                 <tr key={index}>
                   <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb" }}>
                     <div style={{ fontWeight: 500, color: "#111", fontSize: "12px" }}>
-                      {item.product?.name || "Producto"}
+                      {item.tour?.name || "Producto"}
                     </div>
                     <div style={{ fontSize: "10px", color: "#007C92" }}>
-                      {item.product?.line || ""}
+                      {item.tour?.line || ""}
                     </div>
                   </td>
                   <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "center", color: "#111", fontSize: "12px" }}>
                     {item.quantity}
                   </td>
                   <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "right", color: "#111", fontSize: "12px" }}>
-                    RD$ {(item.product?.price || 0).toLocaleString()}
+                    RD$ {(item.tour?.price || 0).toLocaleString()}
                   </td>
                   <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "right", fontWeight: 600, color: "#111", fontSize: "12px" }}>
                     RD$ {item.total.toLocaleString()}
