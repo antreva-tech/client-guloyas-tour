@@ -3,7 +3,7 @@ import type { Tour } from "@prisma/client";
 
 /**
  * Tour data transfer object for create/update operations.
- * Matches form: name, description, tourDate, price, childPrice, stock, lowSeatsThreshold, imageUrls.
+ * Matches form: name, description, tourDate, price, childPrice, stock, lowSeatsThreshold, imageUrls, recurringWeeklyDay.
  */
 export interface ProductDTO {
   name: string;
@@ -19,6 +19,8 @@ export interface ProductDTO {
   sequence?: number;
   lowSeatsThreshold?: number | null;
   tourDate?: Date | string | null;
+  /** 0=Sunday..6=Saturday; when set, tour runs weekly and seats reset after that day. */
+  recurringWeeklyDay?: number | null;
 }
 
 /** Re-export Prisma Tour as Product for backward-compatible API/catalog types. */
@@ -67,12 +69,13 @@ function startOfTodayUTC(): Date {
   return d;
 }
 
-/** Where clause so only current/future-dated tours appear in catalog (null = no date = always show). */
+/** Where clause so only current/future-dated tours appear in catalog; recurring weekly tours always show (cron advances tourDate). */
 function catalogNotExpiredWhere() {
   return {
     OR: [
       { tourDate: null },
       { tourDate: { gte: startOfTodayUTC() } },
+      { recurringWeeklyDay: { not: null } },
     ],
   };
 }
@@ -183,6 +186,7 @@ export async function createProduct(data: ProductDTO): Promise<Tour> {
       sequence: data.sequence ?? 0,
       lowSeatsThreshold: data.lowSeatsThreshold ?? undefined,
       tourDate: data.tourDate != null ? (typeof data.tourDate === "string" ? new Date(data.tourDate) : data.tourDate) : undefined,
+      recurringWeeklyDay: data.recurringWeeklyDay ?? undefined,
     },
   });
 }
@@ -191,12 +195,13 @@ export async function createProduct(data: ProductDTO): Promise<Tour> {
  * Updates an existing tour.
  */
 export async function updateProduct(id: string, data: Partial<ProductDTO>): Promise<Tour> {
-  const { tourDate, imageUrls, ...rest } = data;
+  const { tourDate, imageUrls, recurringWeeklyDay, ...rest } = data;
   const payload: Parameters<typeof db.tour.update>[0]["data"] = { ...rest };
   if (tourDate !== undefined) {
     payload.tourDate = tourDate == null ? null : (typeof tourDate === "string" ? new Date(tourDate) : tourDate);
   }
   if (imageUrls !== undefined) payload.imageUrls = imageUrls;
+  if (recurringWeeklyDay !== undefined) payload.recurringWeeklyDay = recurringWeeklyDay ?? null;
   return db.tour.update({
     where: { id },
     data: payload,

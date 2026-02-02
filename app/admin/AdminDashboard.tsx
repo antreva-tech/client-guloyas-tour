@@ -10,6 +10,8 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { InvoiceHistoryPanel, type PersonaAdditional } from "@/components/InvoiceHistoryPanel";
 import { getProvincias } from "@/lib/locationData";
 import { IMPORT_ONLY_PRODUCT_NAME, isImportOnlyProduct } from "@/lib/products";
+import { getRecurringDayName } from "@/lib/weeklyReset";
+import type { DayOfWeek } from "@/lib/weeklyReset";
 import { UNLIMITED_STOCK } from "@/lib/validation";
 import { formatDateTime } from "@/lib/formatDate";
 import { formatPhoneForDisplay } from "@/lib/phone";
@@ -67,6 +69,8 @@ interface CompletedSale {
   fechaVisita: string;
   /** Reservation date (set from creation time; displayed for completed sale). */
   fechaReserva?: string;
+  /** Payment deadline (Fecha límite de pago). */
+  fechaLimitePago?: string;
   supervisor?: string;
   nombreVendedor?: string;
   isPaid: boolean;
@@ -960,6 +964,8 @@ function ProductForm({
   const [error, setError] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [tourDateYyyyMmDd, setTourDateYyyyMmDd] = useState("");
+  const [isRecurringWeekly, setIsRecurringWeekly] = useState(false);
+  const [recurringDay, setRecurringDay] = useState<DayOfWeek>(0);
 
   /**
    * Uploads a single file and appends its URL to imageUrls.
@@ -1023,6 +1029,7 @@ function ProductForm({
       sequence: 0,
       lowSeatsThreshold,
       tourDate,
+      recurringWeeklyDay: isRecurringWeekly ? recurringDay : null,
       imageUrls: imageUrls.length ? imageUrls : undefined,
     };
 
@@ -1088,6 +1095,33 @@ function ProductForm({
             isClearable
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
+        </div>
+        <div className="mobile-landscape:col-span-2 tablet:col-span-2 space-y-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isRecurringWeekly}
+              onChange={(e) => setIsRecurringWeekly(e.target.checked)}
+              className="rounded border-gold-200 text-aqua-600 focus:ring-aqua-500"
+            />
+            <span className="text-sm text-jet/80">Excursión semanal (reiniciar plazas cada semana)</span>
+          </label>
+          {isRecurringWeekly && (
+            <div className="pl-6">
+              <label htmlFor="create-recurringDay" className="block text-sm font-medium text-jet/80 mb-1">Día de la semana</label>
+              <select
+                id="create-recurringDay"
+                value={recurringDay}
+                onChange={(e) => setRecurringDay(Number(e.target.value) as DayOfWeek)}
+                className="w-full max-w-xs bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
+              >
+                {([0, 1, 2, 3, 4, 5, 6] as const).map((d) => (
+                  <option key={d} value={d}>{getRecurringDayName(d)}</option>
+                ))}
+              </select>
+              <p className="text-xs text-jet/50 mt-1">Tras esa fecha, las plazas se reinician automáticamente para la siguiente semana.</p>
+            </div>
+          )}
         </div>
         <FormField label="Precio Adultos (RD$)" name="price" type="number" required />
         <div>
@@ -1208,6 +1242,9 @@ function EditProductForm({
     return typeof td === "string" ? td.slice(0, 10) : new Date(td).toISOString().slice(0, 10);
   })();
   const [tourDateYyyyMmDd, setTourDateYyyyMmDd] = useState(initialTourDate);
+  const productRecurring = (product as Product & { recurringWeeklyDay?: number | null }).recurringWeeklyDay;
+  const [isRecurringWeekly, setIsRecurringWeekly] = useState(productRecurring != null);
+  const [recurringDay, setRecurringDay] = useState<DayOfWeek>((productRecurring ?? 0) as DayOfWeek);
 
   /**
    * Uploads selected files and appends URLs to imageUrls.
@@ -1269,6 +1306,7 @@ function EditProductForm({
       sequence: productExt.sequence ?? 0,
       lowSeatsThreshold,
       tourDate,
+      recurringWeeklyDay: isRecurringWeekly ? recurringDay : null,
       imageUrls,
     };
 
@@ -1331,6 +1369,33 @@ function EditProductForm({
             isClearable
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
+        </div>
+        <div className="mobile-landscape:col-span-2 tablet:col-span-2 space-y-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isRecurringWeekly}
+              onChange={(e) => setIsRecurringWeekly(e.target.checked)}
+              className="rounded border-gold-200 text-aqua-600 focus:ring-aqua-500"
+            />
+            <span className="text-sm text-jet/80">Excursión semanal (reiniciar plazas cada semana)</span>
+          </label>
+          {isRecurringWeekly && (
+            <div className="pl-6">
+              <label htmlFor="edit-recurringDay" className="block text-sm font-medium text-jet/80 mb-1">Día de la semana</label>
+              <select
+                id="edit-recurringDay"
+                value={recurringDay}
+                onChange={(e) => setRecurringDay(Number(e.target.value) as DayOfWeek)}
+                className="w-full max-w-xs bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
+              >
+                {([0, 1, 2, 3, 4, 5, 6] as const).map((d) => (
+                  <option key={d} value={d}>{getRecurringDayName(d)}</option>
+                ))}
+              </select>
+              <p className="text-xs text-jet/50 mt-1">Tras esa fecha, las plazas se reinician automáticamente para la siguiente semana.</p>
+            </div>
+          )}
         </div>
         <FormField label="Precio Adultos (RD$)" name="price" type="number" defaultValue={product.price.toString()} required />
         <div>
@@ -2140,6 +2205,7 @@ function SaleForm({
   }
 
   const [fechaVisita, setFechaVisita] = useState("");
+  const [fechaLimitePago, setFechaLimitePago] = useState("");
 
   // Optional fields
   const [customerAddress, setCustomerAddress] = useState("");
@@ -2229,16 +2295,16 @@ function SaleForm({
   }
 
   /**
-   * Updates quantity for an item.
+   * Updates quantity for an item. Matches by productId + unitPrice so adult and kid lines stay separate.
    */
-  function handleUpdateQuantity(productId: string, quantity: number) {
+  function handleUpdateQuantity(productId: string, unitPrice: number, quantity: number) {
     const product = products.find((p) => p.id === productId);
     if (!product || quantity < 1) return;
     if (product.stock !== UNLIMITED_STOCK && quantity > product.stock) return;
 
     setItems(
       items.map((i) => {
-        if (i.productId !== productId) return i;
+        if (i.productId !== productId || i.unitPrice !== unitPrice) return i;
         const total = quantity * i.unitPrice;
         const abono = Math.min(i.abono ?? 0, total);
         return { ...i, quantity, total, abono, pendiente: Math.max(0, total - abono) };
@@ -2247,13 +2313,13 @@ function SaleForm({
   }
 
   /**
-   * Updates abono (partial payment) for an item.
+   * Updates abono (partial payment) for an item. Matches by productId + unitPrice so adult and kid lines stay separate.
    * Pendiente is auto-calculated as total - abono.
    */
-  function handleUpdateAbono(productId: string, abono: number) {
+  function handleUpdateAbono(productId: string, unitPrice: number, abono: number) {
     setItems(
       items.map((i) => {
-        if (i.productId !== productId) return i;
+        if (i.productId !== productId || i.unitPrice !== unitPrice) return i;
         const capped = Math.min(i.total, Math.max(0, abono));
         return { ...i, abono: capped, pendiente: Math.max(0, i.total - capped) };
       })
@@ -2261,13 +2327,13 @@ function SaleForm({
   }
 
   /**
-   * Updates unit price for an item; recalculates total and pendiente (total - abono).
+   * Updates unit price for an item; recalculates total and pendiente. Matches by productId + current unitPrice so adult and kid lines stay separate.
    */
-  function handleUpdateUnitPrice(productId: string, unitPrice: number) {
-    const value = Math.max(0, unitPrice);
+  function handleUpdateUnitPrice(productId: string, currentUnitPrice: number, newUnitPrice: number) {
+    const value = Math.max(0, newUnitPrice);
     setItems(
       items.map((i) => {
-        if (i.productId !== productId) return i;
+        if (i.productId !== productId || i.unitPrice !== currentUnitPrice) return i;
         const total = i.quantity * value;
         const abono = Math.min(i.abono ?? 0, total);
         return { ...i, unitPrice: value, total, abono, pendiente: Math.max(0, total - abono) };
@@ -2375,6 +2441,7 @@ function SaleForm({
           })(),
           notes: notes.trim() || undefined,
           fechaVisita,
+          fechaLimitePago: fechaLimitePago || undefined,
           isPaid,
         }),
       });
@@ -2400,6 +2467,7 @@ function SaleForm({
         notes: notes.trim() || undefined,
         fechaReserva: today,
         fechaVisita,
+        fechaLimitePago: fechaLimitePago || undefined,
         isPaid,
         date: formatDateTime(new Date()),
       });
@@ -2505,7 +2573,7 @@ function SaleForm({
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={() => handleUpdateQuantity(item.productId, item.quantity - 1)}
+                          onClick={() => handleUpdateQuantity(item.productId, item.unitPrice, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                           className="w-8 h-8 rounded bg-jet/10 text-jet disabled:opacity-30 flex items-center justify-center text-lg font-medium"
                         >
@@ -2516,7 +2584,7 @@ function SaleForm({
                         </span>
                         <button
                           type="button"
-                          onClick={() => handleUpdateQuantity(item.productId, item.quantity + 1)}
+                          onClick={() => handleUpdateQuantity(item.productId, item.unitPrice, item.quantity + 1)}
                           disabled={product?.stock !== UNLIMITED_STOCK && item.quantity >= (product?.stock ?? 0)}
                           className="w-8 h-8 rounded bg-aqua-500 text-jet disabled:opacity-30 flex items-center justify-center text-lg font-medium"
                         >
@@ -2529,7 +2597,7 @@ function SaleForm({
                           <input
                             type="number"
                             value={item.unitPrice}
-                            onChange={(e) => handleUpdateUnitPrice(item.productId, parseInt(e.target.value) || 0)}
+                            onChange={(e) => handleUpdateUnitPrice(item.productId, item.unitPrice, parseInt(e.target.value) || 0)}
                             className="w-20 bg-white border border-gold-200/50 rounded px-2 py-1.5 text-jet text-sm focus:outline-none focus:ring-1 focus:ring-aqua-500"
                             min="0"
                           />
@@ -2556,7 +2624,7 @@ function SaleForm({
                         <input
                           type="number"
                           value={item.abono || ""}
-                          onChange={(e) => handleUpdateAbono(item.productId, parseInt(e.target.value) || 0)}
+                          onChange={(e) => handleUpdateAbono(item.productId, item.unitPrice, parseInt(e.target.value) || 0)}
                           className="w-full bg-white border border-gold-200/50 rounded px-2 py-1.5 text-jet text-sm focus:outline-none focus:ring-1 focus:ring-aqua-500"
                           placeholder="0"
                           min="0"
@@ -2828,6 +2896,19 @@ function SaleForm({
               onFocus={() => clearFieldError("fechaVisita")}
               className={`w-full bg-pearl border rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500 ${fieldErrors.has("fechaVisita") ? "border-danger" : fechaVisita ? "border-success/50" : "border-gold-200/50"}`}
               title="Puede completarse desde el tour seleccionado si tiene fecha definida"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-jet/80 mb-1">
+              Fecha límite de pago
+            </label>
+            <input
+              type="date"
+              value={fechaLimitePago}
+              onChange={(e) => setFechaLimitePago(e.target.value)}
+              className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
+              title="Fecha hasta la cual debe realizarse el pago"
             />
           </div>
 

@@ -63,6 +63,7 @@ export async function PATCH(
     if (updates.notes !== undefined) data.notes = updates.notes;
     if (updates.fechaEntrega !== undefined) data.fechaEntrega = updates.fechaEntrega ? new Date(updates.fechaEntrega) : null;
     if (updates.fechaVisita !== undefined) data.fechaVisita = updates.fechaVisita ? new Date(updates.fechaVisita) : null;
+    if (updates.fechaLimitePago !== undefined) data.fechaLimitePago = updates.fechaLimitePago ? new Date(updates.fechaLimitePago) : null;
     if (updates.supervisor !== undefined) data.supervisor = updates.supervisor;
     if (updates.nombreVendedor !== undefined) data.nombreVendedor = updates.nombreVendedor;
 

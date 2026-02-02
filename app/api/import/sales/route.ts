@@ -222,7 +222,7 @@ function parseProductCellToItems(cell: string): Array<{ lookupName: string; pric
 
 /**
  * POST /api/import/sales
- * Imports sales from a CSV file (e.g. exported from Google Sheets / Kairú Ventas).
+ * Imports sales from a CSV file (e.g. exported from Google Sheets or another source).
  * Requires admin authentication.
  * Body: multipart/form-data with file field "file" (CSV).
  * CSV must have headers. Required: product (producto/productos) and total (total/precio/monto).
@@ -230,7 +230,7 @@ function parseProductCellToItems(cell: string): Array<{ lookupName: string; pric
  * Optional: nombre/cliente, telefono, cedula, provincia, municipio, direccion,
  * referencias/notas, fecha de entrega, fecha de visita,
  * supervisor, nombre vendedor/vendedor, estado (pagado/pendiente), abono, pendiente.
- * Kairú Ventas CSV: Nombre, Telefono, Cedula, Provincia, Municipio, Direccion,
+ * Example columns: Nombre, Telefono, Cedula, Provincia, Municipio, Direccion,
  * Referencias, Fecha de Entrega, Fecha de Visita, Productos, Precio,
  * Abono, Pendiente, Vendedor, Supervisor, Notas, Estado, Nombre Vendedor.
  * @returns JSON with created count and any errors per row.

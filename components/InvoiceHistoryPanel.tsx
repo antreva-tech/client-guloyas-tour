@@ -57,6 +57,7 @@ interface SaleRecord {
   notes?: string | null;
   fechaEntrega: string;
   fechaVisita: string;
+  fechaLimitePago?: string | null;
   supervisor: string;
   nombreVendedor: string;
   isPaid: boolean;
@@ -89,6 +90,7 @@ interface InvoiceSummary {
   notes: string;
   fechaEntrega: string;
   fechaVisita: string;
+  fechaLimitePago?: string | null;
   supervisor: string;
   nombreVendedor: string;
   isPaid: boolean;
@@ -207,6 +209,7 @@ function groupSalesByBatch(
         notes,
         fechaEntrega: sale.fechaEntrega || "",
         fechaVisita: sale.fechaVisita || "",
+        fechaLimitePago: sale.fechaLimitePago ?? "",
         supervisor: sale.supervisor || "",
         nombreVendedor: sale.nombreVendedor || "",
         isPaid: sale.isPaid ?? false,
@@ -1097,7 +1100,7 @@ export function InvoiceHistoryPanel({
                     RD$ {invoice.total.toLocaleString()}
                   </p>
                   <p className="text-gold-500 text-xs mt-0.5">
-                    Lo que debe: RD$ {invoice.totalPendiente.toLocaleString()}
+                    {invoice.isPaid ? "No debe nada (pagado)" : `Lo que debe: RD$ ${invoice.totalPendiente.toLocaleString()}`}
                   </p>
                 </div>
               </div>
@@ -1243,6 +1246,7 @@ function InvoiceDetailModal({
   const [editSale, setEditSale] = useState({
     fechaEntrega: invoice.fechaEntrega ? invoice.fechaEntrega.slice(0, 10) : "",
     fechaVisita: invoice.fechaVisita ? invoice.fechaVisita.slice(0, 10) : "",
+    fechaLimitePago: invoice.fechaLimitePago ? invoice.fechaLimitePago.slice(0, 10) : "",
     supervisor: invoice.supervisor || "",
     nombreVendedor: invoice.nombreVendedor || "",
   });
@@ -1264,10 +1268,11 @@ function InvoiceDetailModal({
     setEditSale({
       fechaEntrega: invoice.fechaEntrega ? invoice.fechaEntrega.slice(0, 10) : "",
       fechaVisita: invoice.fechaVisita ? invoice.fechaVisita.slice(0, 10) : "",
+      fechaLimitePago: invoice.fechaLimitePago ? invoice.fechaLimitePago.slice(0, 10) : "",
       supervisor: invoice.supervisor || "",
       nombreVendedor: invoice.nombreVendedor || "",
     });
-  }, [invoice.batchId, invoice.customerLabel, invoice.customerPhone, invoice.cedula, invoice.provincia, invoice.municipio, invoice.customerAddress, invoice.notes, invoice.fechaEntrega, invoice.fechaVisita, invoice.supervisor, invoice.nombreVendedor, invoice.whatsappCount, invoice.callCount, invoice.personasAdditional]);
+  }, [invoice.batchId, invoice.customerLabel, invoice.customerPhone, invoice.cedula, invoice.provincia, invoice.municipio, invoice.customerAddress, invoice.notes, invoice.fechaEntrega, invoice.fechaVisita, invoice.fechaLimitePago, invoice.supervisor, invoice.nombreVendedor, invoice.whatsappCount, invoice.callCount, invoice.personasAdditional]);
 
   const dateLabel = formatDateTime(invoice.createdAt);
   const voidedDateLabel = invoice.voidedAt ? formatDateTime(invoice.voidedAt) : null;
@@ -1287,8 +1292,9 @@ function InvoiceDetailModal({
       })
       .join("\n");
 
+    const brandName = brandConfig.brandName;
     const lines = [
-      "Hola, te hablamos de empresas Kairú, los productos del cabello, aquí está el resumen de tu factura:",
+      `Hola, te hablamos de ${brandName}, aquí está el resumen de tu factura:`,
       "",
       "\uD83D\uDCCB *Factura #" + invoiceId + "*",
       "",
@@ -1298,30 +1304,22 @@ function InvoiceDetailModal({
       "Total factura: RD$ " + invoice.total.toLocaleString(),
     ];
 
-    if (!invoice.isVoided && invoice.totalPendiente > 0) {
+    if (!invoice.isVoided && invoice.isPaid) {
+      lines.push("");
+      lines.push("*\uD83D\uDCB0 No debe nada (reservación pagada)*");
+    } else if (!invoice.isVoided && invoice.totalPendiente > 0) {
       lines.push("");
       lines.push("*\uD83D\uDCB0 Lo que debe (saldo pendiente): RD$ " + invoice.totalPendiente.toLocaleString() + "*");
     }
 
     lines.push("");
-    if (invoice.fechaVisita) {
-      lines.push("Fecha límite de pago: " + formatDate(invoice.fechaVisita));
+    if (invoice.fechaLimitePago) {
+      lines.push("Fecha límite de pago: " + formatDate(invoice.fechaLimitePago));
       lines.push("");
     }
 
-    lines.push("*A: Santos B. Nolasco Calderón*");
-    lines.push("*Cuentas de ahorros.* ");
-    lines.push("");
-    lines.push("Cédula: 023-00160773");
-    lines.push("");
-    lines.push("Banco Popular ");
-    lines.push(" 775675960");
-    lines.push("");
-    lines.push("Banco Reservas ");
-    lines.push("7300060176");
-    lines.push("");
     lines.push("Gracias por tu compra! \u2728");
-    lines.push(`— ${brandConfig.brandName}`);
+    lines.push(`— ${brandName}`);
     if (brandConfig.instagramUrl) {
       lines.push("¡Síguenos en Instagram!");
       lines.push("");
@@ -1436,6 +1434,7 @@ function InvoiceDetailModal({
         body: JSON.stringify({
           fechaEntrega: editSale.fechaEntrega || null,
           fechaVisita: editSale.fechaVisita || null,
+          fechaLimitePago: editSale.fechaLimitePago || null,
           ...(showSupervisorFilter
             ? { supervisor: editSale.supervisor.trim(), nombreVendedor: editSale.nombreVendedor.trim() }
             : {}),
@@ -2044,6 +2043,15 @@ function InvoiceDetailModal({
                     className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
                   />
                 </div>
+                <div>
+                  <label className="block text-jet/60 text-xs mb-0.5">Fecha límite de pago</label>
+                  <input
+                    type="date"
+                    value={editSale.fechaLimitePago}
+                    onChange={(e) => setEditSale((s) => ({ ...s, fechaLimitePago: e.target.value }))}
+                    className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
+                  />
+                </div>
                 {showSupervisorFilter && (
                   <>
                     <div>
@@ -2091,6 +2099,7 @@ function InvoiceDetailModal({
                       setEditSale({
                         fechaEntrega: invoice.fechaEntrega ? invoice.fechaEntrega.slice(0, 10) : "",
                         fechaVisita: invoice.fechaVisita ? invoice.fechaVisita.slice(0, 10) : "",
+                        fechaLimitePago: invoice.fechaLimitePago ? invoice.fechaLimitePago.slice(0, 10) : "",
                         supervisor: invoice.supervisor || "",
                         nombreVendedor: invoice.nombreVendedor || "",
                       });
@@ -2111,6 +2120,11 @@ function InvoiceDetailModal({
               {invoice.fechaVisita && (
                 <p className="text-jet/70">
                   <span className="text-jet/50">Tour:</span> {formatDate(invoice.fechaVisita)}
+                </p>
+              )}
+              {invoice.fechaLimitePago && (
+                <p className="text-jet/70">
+                  <span className="text-jet/50">Límite pago:</span> {formatDate(invoice.fechaLimitePago)}
                 </p>
               )}
               {showSupervisorFilter && invoice.supervisor && (
@@ -2165,18 +2179,20 @@ function InvoiceDetailModal({
                     </div>
                   </div>
                   {/* Depósito (paid upfront) and Lo que debe (amount still owed) */}
-                  {(item.abono || item.pendiente) && (
+                  {(item.abono || item.pendiente || invoice.isPaid) && (
                     <div className="flex gap-4 mt-2 pt-2 border-t border-gold-200/30 text-xs">
                       {item.abono !== null && item.abono !== undefined && item.abono > 0 && (
                         <span className="text-success">
                           Depósito: RD$ {item.abono.toLocaleString()}
                         </span>
                       )}
-                      {item.pendiente !== null && item.pendiente !== undefined && item.pendiente > 0 && (
+                      {invoice.isPaid ? (
+                        <span className="text-success">Pagado</span>
+                      ) : item.pendiente !== null && item.pendiente !== undefined && item.pendiente > 0 ? (
                         <span className="text-gold-500">
                           Lo que debe: RD$ {item.pendiente.toLocaleString()}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -2194,21 +2210,25 @@ function InvoiceDetailModal({
                 RD$ {invoice.total.toLocaleString()}
               </p>
             </div>
-            {!invoice.isVoided && (invoice.totalAbono > 0 || invoice.totalPendiente > 0) && (
+            {!invoice.isVoided && (invoice.totalAbono > 0 || invoice.totalPendiente > 0 || invoice.isPaid) && (
               <div className="mt-2 pt-2 border-t border-white/20 text-sm space-y-1">
                 {invoice.totalAbono > 0 && (
                   <p className="text-white/90">
                     Depósito (pagado al inicio): RD$ {invoice.totalAbono.toLocaleString()}
                   </p>
                 )}
-                {invoice.totalPendiente > 0 && (
+                {invoice.isPaid ? (
+                  <p className="text-success font-medium">No debe nada (reservación pagada)</p>
+                ) : invoice.totalPendiente > 0 ? (
                   <p className="text-gold-500 font-medium">
                     Lo que debe (saldo pendiente): RD$ {invoice.totalPendiente.toLocaleString()}
                   </p>
+                ) : null}
+                {!invoice.isPaid && (invoice.totalAbono > 0 || invoice.totalPendiente > 0) && (
+                  <p className="text-white/70 text-xs mt-1">
+                    Total = Depósito + Lo que debe → RD$ {(invoice.totalAbono + invoice.totalPendiente).toLocaleString()}
+                  </p>
                 )}
-                <p className="text-white/70 text-xs mt-1">
-                  Total = Depósito + Lo que debe → RD$ {(invoice.totalAbono + invoice.totalPendiente).toLocaleString()}
-                </p>
               </div>
             )}
           </div>
@@ -2434,6 +2454,9 @@ function InvoiceDetailModal({
                 {invoice.fechaVisita && (
                   <p>Tour: {formatDate(invoice.fechaVisita)}</p>
                 )}
+                {invoice.fechaLimitePago && (
+                  <p>Límite pago: {formatDate(invoice.fechaLimitePago)}</p>
+                )}
                 {showSupervisorFilter && invoice.supervisor && (
                   <p>Supervisor: {invoice.supervisor}</p>
                 )}
@@ -2533,18 +2556,22 @@ function InvoiceDetailModal({
           </div>
 
           {/* Depósito (deposit) and Lo que debe (amount still owed) */}
-          {!invoice.isVoided && (invoice.totalAbono > 0 || invoice.totalPendiente > 0) && (
+          {!invoice.isVoided && (invoice.totalAbono > 0 || invoice.totalPendiente > 0 || invoice.isPaid) && (
             <div style={{ marginBottom: "24px", padding: "12px 16px", background: "#f9fafb", borderRadius: "8px", fontSize: "12px", color: "#374151" }}>
               <p style={{ margin: "0 0 4px 0", fontWeight: 600 }}>Resumen de pago</p>
               {invoice.totalAbono > 0 && (
                 <p style={{ margin: "0 0 2px 0" }}>Depósito (pagado al inicio): RD$ {invoice.totalAbono.toLocaleString()}</p>
               )}
-              {invoice.totalPendiente > 0 && (
+              {invoice.isPaid ? (
+                <p style={{ margin: "0 0 2px 0", fontWeight: 600, color: "#16a34a" }}>No debe nada (reservación pagada)</p>
+              ) : invoice.totalPendiente > 0 ? (
                 <p style={{ margin: "0 0 2px 0", fontWeight: 600, color: "#C8A96A" }}>Lo que debe (saldo pendiente): RD$ {invoice.totalPendiente.toLocaleString()}</p>
+              ) : null}
+              {!invoice.isPaid && (invoice.totalAbono > 0 || invoice.totalPendiente > 0) && (
+                <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#6b7280" }}>
+                  Total = Depósito + Lo que debe → RD$ {(invoice.totalAbono + invoice.totalPendiente).toLocaleString()}
+                </p>
               )}
-              <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#6b7280" }}>
-                Total = Depósito + Lo que debe → RD$ {(invoice.totalAbono + invoice.totalPendiente).toLocaleString()}
-              </p>
             </div>
           )}
 

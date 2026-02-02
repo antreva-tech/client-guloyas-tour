@@ -68,7 +68,7 @@ export async function PATCH(
 
     await db.sale.updateMany({
       where: { batchId, ...supervisorFilter },
-      data: { isPaid },
+      data: isPaid ? { isPaid: true, pendiente: 0 } : { isPaid: false },
     });
 
     return NextResponse.json({

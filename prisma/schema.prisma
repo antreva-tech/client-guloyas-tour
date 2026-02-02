@@ -30,6 +30,7 @@ model Tour {
   sequence          Int      @default(0)   /// Display order in catalog (lower = first)
   lowSeatsThreshold Int?     /// Per-tour threshold for "low seats" badge (null = use default)
   tourDate          DateTime? /// Default date; pre-fills "Fecha del Tour" when booking
+  recurringWeeklyDay Int?    /// 0=Sunday..6=Saturday; when set, tour runs weekly and seats reset after that day
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   sales             Sale[]
@@ -57,6 +58,7 @@ model Sale {
   notes            String?
   fechaEntrega     DateTime?
   fechaVisita      DateTime? /// Tour date (required via API; may be sourced from Tour.tourDate)
+  fechaLimitePago  DateTime? /// Payment deadline (Fecha límite de pago)
   supervisor       String?
   nombreVendedor   String?
   isPaid           Boolean   @default(false)

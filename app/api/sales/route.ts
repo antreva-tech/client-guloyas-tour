@@ -143,6 +143,7 @@ export async function POST(request: NextRequest) {
       personasAdditional,
       notes,
       fechaVisita,
+      fechaLimitePago,
       isPaid,
     } = parsed.data;
     const supervisor = parsed.data.supervisor?.trim() || null;
@@ -176,9 +177,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Reservation date = creation time; tour date from request
+    // Reservation date = creation time; tour date and payment deadline from request
     const reservationDate = new Date();
     const visitDate = new Date(fechaVisita);
+    const paymentDeadline = fechaLimitePago ? new Date(fechaLimitePago) : null;
 
     // Create sale records and update products in a transaction
     const result = await db.$transaction(async (tx) => {
@@ -207,6 +209,7 @@ export async function POST(request: NextRequest) {
             notes: notes || null,
             fechaEntrega: reservationDate,
             fechaVisita: visitDate,
+            fechaLimitePago: paymentDeadline,
             supervisor,
             nombreVendedor,
             isPaid: isPaid ?? false,

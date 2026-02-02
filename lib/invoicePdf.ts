@@ -303,6 +303,7 @@ export interface SaleWithTour {
   cedula: string | null;
   fechaEntrega: Date | null;
   fechaVisita: Date | null;
+  fechaLimitePago: Date | null;
   isPaid: boolean;
   nombreVendedor: string | null;
   createdAt: Date;
@@ -320,13 +321,17 @@ export function buildInvoiceFromSales(sales: SaleWithTour[], batchId: string): I
   const first = sales[0];
   const subTotal = sales.reduce((sum, s) => sum + s.total, 0);
   const totalPaid = sales.reduce((sum, s) => sum + (s.abono ?? 0), 0);
-  const pending = sales.reduce((sum, s) => sum + (s.pendiente ?? 0), 0);
+  const pending = first.isPaid ? 0 : sales.reduce((sum, s) => sum + (s.pendiente ?? 0), 0);
   const payments: InvoicePaymentLine[] = [];
   if (totalPaid > 0) payments.push({ label: "ABONO 1", amount: totalPaid });
   const issueDate = formatDate(first.createdAt);
   const de = formatDate(first.fechaEntrega);
   const dv = formatDate(first.fechaVisita);
   const dateRangeText = de && dv ? `${de} - ${dv}` : de || dv || "—";
+  /** Fecha de vencimiento: payment deadline when set, else tour date. */
+  const expirationDate = first.fechaLimitePago
+    ? formatDate(first.fechaLimitePago)
+    : formatDate(first.fechaVisita);
   return {
     invoiceNo: batchId.slice(0, 10),
     company: getCompany(),
@@ -342,7 +347,7 @@ export function buildInvoiceFromSales(sales: SaleWithTour[], batchId: string): I
     dates: {
       issueDate,
       paymentDueDate: issueDate,
-      expirationDate: formatDate(first.fechaVisita),
+      expirationDate,
     },
     paymentTerms: first.isPaid ? "Pagado" : "Pago parcial / Pendiente",
     items: sales.map((s) => ({

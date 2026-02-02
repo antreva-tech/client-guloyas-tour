@@ -82,6 +82,14 @@ export const CreateProductSchema = z.object({
     .optional(),
   /** Default tour date (ISO date string); pre-fills "Fecha del Tour" when booking. */
   tourDate: z.string().optional(),
+  /** 0=Sunday..6=Saturday; when set, tour runs weekly and seats reset after that day. */
+  recurringWeeklyDay: z
+    .number()
+    .int("El día debe ser un número entero")
+    .min(0, "Día inválido (0=domingo … 6=sábado)")
+    .max(6, "Día inválido (0=domingo … 6=sábado)")
+    .nullable()
+    .optional(),
 });
 
 /**
@@ -139,6 +147,14 @@ export const UpdateProductSchema = z.object({
     .nullable()
     .optional(),
   tourDate: z.string().nullable().optional(),
+  /** 0=Sunday..6=Saturday; when set, tour runs weekly and seats reset after that day. */
+  recurringWeeklyDay: z
+    .number()
+    .int("El día debe ser un número entero")
+    .min(0, "Día inválido (0=domingo … 6=sábado)")
+    .max(6, "Día inválido (0=domingo … 6=sábado)")
+    .nullable()
+    .optional(),
 });
 
 /**
@@ -205,6 +221,7 @@ export const CreateSaleSchema = z.object({
   notes: z.string().max(1000).optional(),
   fechaEntrega: z.string().optional(), /// Set server-side from reservation creation time
   fechaVisita: z.string().min(1, "Fecha del tour es requerida"),
+  fechaLimitePago: z.string().optional(), /// Payment deadline (Fecha límite de pago)
   supervisor: z.string().max(200).optional(),
   nombreVendedor: z.string().max(200).optional(),
   isPaid: z.boolean().default(false),
@@ -238,6 +255,7 @@ export const UpdateInvoiceSchema = z.object({
   notes: z.string().max(1000).nullable().optional(),
   fechaEntrega: z.string().nullable().optional(),
   fechaVisita: z.string().nullable().optional(),
+  fechaLimitePago: z.string().nullable().optional(),
   supervisor: z.string().max(200).optional(),
   nombreVendedor: z.string().max(200).optional(),
 });
