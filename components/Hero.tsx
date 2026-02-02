@@ -21,19 +21,17 @@ export function Hero() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
         <div className="text-center">
-          {/* Logo mark with elegant presentation */}
+          {/* Logo mark – no background, sits on gradient; subtle glow */}
           <div className="flex justify-center mb-8 sm:mb-10">
             <div className="relative group">
-              {/* Glow effect behind logo */}
-              <div className="absolute -inset-3 bg-gradient-to-r from-brand-sunset/20 via-brand-gold/20 to-brand-sunset/20 rounded-3xl blur-xl opacity-60 group-hover:opacity-80 transition-opacity" />
-              {/* Logo container */}
-              <div className="relative bg-white rounded-2xl px-8 py-5 shadow-xl border border-brand-sand/40">
+              <div className="absolute -inset-4 bg-gradient-to-r from-brand-sunset/15 via-brand-gold/15 to-brand-sunset/15 rounded-full blur-2xl opacity-50 group-hover:opacity-70 transition-opacity" />
+              <div className="relative">
                 <Image
                   src={brandConfig.logoPath}
                   alt={brandConfig.brandName}
-                  width={200}
-                  height={80}
-                  className="h-16 sm:h-20 w-auto"
+                  width={480}
+                  height={192}
+                  className="h-28 sm:h-36 md:h-44 lg:h-52 w-auto object-contain"
                   priority
                 />
               </div>
@@ -61,7 +59,7 @@ export function Hero() {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0 mb-10 sm:mb-14">
             <a
-              href="#tours"
+              href="#productos"
               className="btn-primary px-8 sm:px-10 py-4 sm:py-3.5 rounded-full text-base sm:text-lg font-semibold touch-manipulation"
             >
               {t.common.viewCatalog}

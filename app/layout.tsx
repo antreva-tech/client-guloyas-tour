@@ -16,32 +16,53 @@ export const metadataBase = new URL(brandConfig.siteUrl);
 
 /**
  * Global metadata for the entire site.
- * Includes Open Graph, Twitter Card, icons, and theme color.
+ * SEO- and AI-friendly: clear title/description, OG/Twitter, E-E-A-T signals.
  */
+const siteDescription =
+  `${brandConfig.tagline}. Tours y experiencias en República Dominicana. Reserva por WhatsApp. Envíos y coordinación nacional.`;
+
 export const metadata: Metadata = {
   metadataBase,
+  applicationName: brandConfig.brandName,
   title: {
     default: `${brandConfig.brandName} | ${brandConfig.tagline}`,
     template: `%s | ${brandConfig.brandName}`,
   },
-  description: `${brandConfig.tagline}. Premium products. Envíos nacionales disponibles.`,
-  keywords: ["productos premium", "catálogo", "ventas", "envíos", brandConfig.brandName],
+  description: siteDescription,
+  keywords: [
+    "tours",
+    "excursiones",
+    "República Dominicana",
+    "experiencias",
+    "reserva por WhatsApp",
+    "catálogo",
+    brandConfig.brandName,
+  ],
   authors: [{ name: brandConfig.brandName }],
   creator: brandConfig.brandName,
   publisher: brandConfig.brandName,
+  referrer: "origin-when-cross-origin",
+  formatDetection: { email: true, telephone: true },
   openGraph: {
     title: `${brandConfig.brandName} | ${brandConfig.tagline}`,
-    description: `${brandConfig.tagline}. Premium products.`,
+    description: siteDescription,
     url: "/",
     siteName: brandConfig.brandName,
     locale: "es_DO",
     type: "website",
-    images: [{ url: brandConfig.logoPath, width: 1200, height: 630, alt: `${brandConfig.brandName} - ${brandConfig.tagline}` }],
+    images: [
+      {
+        url: brandConfig.logoPath,
+        width: 1200,
+        height: 630,
+        alt: `${brandConfig.brandName} - ${brandConfig.tagline}`,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: `${brandConfig.brandName} | ${brandConfig.tagline}`,
-    description: `${brandConfig.tagline}. Premium products.`,
+    description: siteDescription,
     images: [brandConfig.logoPath],
   },
   icons: { icon: "/favicon.ico", apple: brandConfig.logoPath },
@@ -71,6 +92,9 @@ export default function RootLayout({
     <html lang="es">
       <head>
         <meta name="geo.region" content="DO" />
+        <meta name="geo.placename" content="República Dominicana" />
+        {/* AI/LLM: concise summary for crawlers and summarizers */}
+        <meta name="summary" content={siteDescription} />
         {/* iOS PWA support */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

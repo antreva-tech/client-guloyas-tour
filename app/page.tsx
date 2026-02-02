@@ -12,6 +12,7 @@ import {
 } from "@/components";
 import { getActiveProducts } from "@/lib/products";
 import { getLowStockThreshold } from "@/lib/settings";
+import { getDictionary } from "@/lib/i18n";
 
 /**
  * Force dynamic rendering to ensure fresh product data on each request.
@@ -44,6 +45,12 @@ export default async function Home() {
   let tours: Awaited<ReturnType<typeof getActiveProducts>> = [];
   let defaultLowSeatsThreshold = 5;
 
+  const t = getDictionary();
+  const faqFromShipping = t.shipping.features.map((f) => ({
+    question: f.title,
+    answer: f.description,
+  }));
+
   try {
     const [toursResult, thresholdResult] = await Promise.all([
       getActiveProducts(),
@@ -57,9 +64,9 @@ export default async function Home() {
 
   return (
     <>
-      <SeoStructuredData products={tours} />
+      <SeoStructuredData products={tours} faq={faqFromShipping} />
       <Header />
-      <main>
+      <main role="main" id="main-content">
         <Hero />
         <Catalog tours={tours} defaultLowSeatsThreshold={defaultLowSeatsThreshold} />
         <About />

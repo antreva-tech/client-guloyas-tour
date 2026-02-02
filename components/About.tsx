@@ -20,7 +20,7 @@ export function About() {
   const about = t.about;
 
   return (
-    <section id="nosotros" className="py-12 sm:py-20 bg-brand-canvas">
+    <section id="nosotros" aria-labelledby="about-heading" className="py-12 sm:py-20 bg-brand-canvas">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center">
           {/* Content */}
@@ -28,7 +28,7 @@ export function About() {
             <span className="text-brand-sky text-xs sm:text-sm font-semibold uppercase tracking-wider">
               {about.sectionLabel}
             </span>
-            <h2 className="text-2xl sm:text-4xl font-bold text-brand-ink mt-2 mb-4 sm:mb-6">
+            <h2 id="about-heading" className="text-2xl sm:text-4xl font-bold text-brand-ink mt-2 mb-4 sm:mb-6">
               {about.headline.split(" ").slice(0, -1).join(" ")}{" "}
               <span className="text-brand-sunset">{about.headline.split(" ").pop()}</span>
             </h2>

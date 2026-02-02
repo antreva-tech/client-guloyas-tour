@@ -12,4 +12,4 @@ export { Shipping } from "./Shipping";
 export { Contact } from "./Contact";
 export { Footer } from "./Footer";
 export { WhatsAppFloat } from "./WhatsAppFloat";
-export { SeoStructuredData } from "./SeoStructuredData";
+export { SeoStructuredData, type FaqItem } from "./SeoStructuredData";

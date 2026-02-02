@@ -46,7 +46,7 @@ export function Footer() {
             <h4 className="text-night-text font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Enlaces</h4>
             <ul className="space-y-2">
               {[
-                { href: "#tours", label: "Tours" },
+                { href: "#productos", label: "Productos" },
                 { href: "#nosotros", label: "Nosotros" },
                 { href: "#reservar", label: "Cómo reservar" },
                 { href: "#contacto", label: "Contacto" },

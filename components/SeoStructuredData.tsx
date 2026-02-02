@@ -18,6 +18,12 @@ interface ProductForSchema {
   stock?: number;
 }
 
+/** Single FAQ entry for FAQPage schema (must match visible content). */
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
 /**
  * Props for the SeoStructuredData component.
  */
@@ -25,6 +31,8 @@ interface SeoStructuredDataProps {
   baseUrl?: string;
   /** Catalog tours/experiences for ItemList + Product schema. */
   products?: ProductForSchema[];
+  /** FAQ pairs for FAQPage schema (e.g. how to reserve); must match visible content. */
+  faq?: FaqItem[];
 }
 
 /**
@@ -45,9 +53,10 @@ function toAbsoluteImageUrl(imageUrl: string, siteUrl: string): string {
  * Helps search engines and AI systems understand the business and catalog.
  * @param baseUrl - The base URL for the website (defaults to env or placeholder).
  * @param products - Catalog products for Product schema (optional).
+ * @param faq - FAQ pairs for FAQPage schema (optional).
  * @returns Script elements containing JSON-LD structured data.
  */
-export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataProps) {
+export function SeoStructuredData({ baseUrl, products = [], faq = [] }: SeoStructuredDataProps) {
   const siteUrl = baseUrl || brandConfig.siteUrl;
   const logoUrl = brandConfig.logoPath.startsWith("http") ? brandConfig.logoPath : `${siteUrl}${brandConfig.logoPath.startsWith("/") ? "" : "/"}${brandConfig.logoPath}`;
 
@@ -83,6 +92,7 @@ export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataP
     ...(sameAs.length > 0 && { sameAs }),
   };
 
+  /** WebSite with potentialAction for contact (AI/LLM and search). */
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -91,6 +101,13 @@ export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataP
     description: `${brandConfig.tagline}. Tours y experiencias.`,
     inLanguage: "es-DO",
     publisher: { "@type": "Organization" as const, name: brandConfig.brandName },
+    ...(brandConfig.whatsappNumber && {
+      potentialAction: {
+        "@type": "ContactPage" as const,
+        url: `${siteUrl}/#contacto`,
+        name: "Contactar por WhatsApp",
+      },
+    }),
   };
 
   const localBusinessSchema = {
@@ -108,29 +125,31 @@ export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataP
   };
 
   /**
-   * BreadcrumbList schema for navigation clarity.
+   * BreadcrumbList schema for navigation (matches nav and section id productos).
    */
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Inicio", item: siteUrl },
-      { "@type": "ListItem", position: 2, name: "Tours", item: `${siteUrl}/#tours` },
+      { "@type": "ListItem", position: 2, name: "Productos", item: `${siteUrl}/#productos` },
     ],
   };
 
   /**
-   * ItemList + Product schemas for catalog items (AI extraction).
+   * Product + TouristTrip schema for tour/experience items (AI entity depth).
    */
   const productSchemas = products.map((p) => {
     const imageUrl = p.imageUrl ? toAbsoluteImageUrl(p.imageUrl, siteUrl) : logoUrl;
-    const availability = p.stock === undefined || p.stock === null || p.stock === -1 || p.stock > 0
-      ? "https://schema.org/InStock"
-      : "https://schema.org/OutOfStock";
+    const availability =
+      p.stock === undefined || p.stock === null || p.stock === -1 || p.stock > 0
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock";
     return {
       "@context": "https://schema.org",
       "@type": "Product",
       "@id": `${siteUrl}/#tour-${p.id}`,
+      additionalType: "https://schema.org/TouristTrip",
       sku: p.id,
       name: p.name,
       description: p.description,
@@ -145,6 +164,22 @@ export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataP
       },
     };
   });
+
+  /**
+   * FAQPage schema from "Cómo reservar" content (must match visible copy).
+   */
+  const faqSchema =
+    faq.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faq.map((item) => ({
+            "@type": "Question",
+            name: item.question,
+            acceptedAnswer: { "@type": "Answer", text: item.answer },
+          })),
+        }
+      : null;
 
   const itemListSchema =
     products.length > 0
@@ -184,6 +219,12 @@ export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataP
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
+        />
+      )}
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
       )}
       {productSchemas.map((schema, i) => (

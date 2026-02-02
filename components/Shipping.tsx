@@ -16,14 +16,14 @@ export function Shipping() {
   ];
 
   return (
-    <section id="reservar" className="py-12 sm:py-20 bg-white">
+    <section id="reservar" aria-labelledby="reservar-heading" className="py-12 sm:py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-8 sm:mb-12">
           <span className="text-brand-gold text-xs sm:text-sm font-semibold uppercase tracking-wider">
             {t.shipping.sectionLabel}
           </span>
-          <h2 className="text-2xl sm:text-4xl font-bold text-brand-ink mt-2 mb-3 sm:mb-4">
+          <h2 id="reservar-heading" className="text-2xl sm:text-4xl font-bold text-brand-ink mt-2 mb-3 sm:mb-4">
             {t.shipping.headline}
           </h2>
           <p className="text-brand-muted max-w-2xl mx-auto text-sm sm:text-base">
