@@ -22,11 +22,7 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   engine: "classic",
-  ...(isPlaceholder
-    ? {}
-    : {
-        datasource: {
-          url: directUrl,
-        },
-      }),
+  datasource: {
+    url: isPlaceholder ? databaseUrl ?? "file:./placeholder.db" : directUrl,
+  },
 });
