@@ -1,0 +1,155 @@
+// Retail Web Dashboard - Prisma Schema
+// Database: Neon Postgres
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Product model for the catalog
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  line        String
+  description String
+  price       Int
+  specialOfferPrice Int?  /// Optional special offer price (RD$); shown in sale dropdown when set
+  currency    String   @default("RD$")
+  imageUrl    String?
+  stock       Int      @default(0)
+  sold        Int      @default(0)
+  isActive    Boolean  @default(true)
+  isKit       Boolean  @default(false)
+  isIndividual Boolean @default(false)
+  sequence    Int      @default(0)   /// Display order in catalog (lower = first)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  sales       Sale[]
+
+  /// Index for active products sorted by creation date (catalog queries)
+  @@index([isActive, createdAt])
+  /// Index for kit filtering (isActive + isKit queries)
+  @@index([isActive, isKit])
+  /// Index for individual-product filtering (isActive + isIndividual queries)
+  @@index([isActive, isIndividual])
+  @@map("products")
+}
+
+/// Sale record for tracking inventory
+/// Note: New fields are nullable in DB for backward compatibility.
+/// API validation requires them for new sales.
+model Sale {
+  id              String    @id @default(cuid())
+  batchId         String    @default(cuid())
+  productId       String
+  quantity        Int
+  total           Int
+  abono           Int?      /// Partial payment amount ($)
+  pendiente       Int?      /// Pending amount ($)
+  customerName    String?   /// Customer name (required via API)
+  customerPhone   String?   /// Phone (required via API)
+  cedula          String?   /// Cedula/ID number (required via API)
+  provincia       String?   /// Province (required via API, dropdown)
+  municipio       String?   /// Municipality (required via API, free-form text)
+  customerAddress String?   /// Optional address (Direccion)
+  lugarTrabajo    String?   /// Workplace (required via API)
+  notes           String?   /// Optional referencia/nota
+  fechaEntrega    DateTime? /// Delivery date (required via API)
+  fechaVisita     DateTime? /// Visit date (required via API)
+  supervisor      String?   /// Supervisor (required via API)
+  nombreVendedor  String?   /// Seller name (required via API)
+  isPaid          Boolean   @default(false) /// Payment status flag
+  voidedAt        DateTime?
+  voidReason      String?
+  createdAt       DateTime  @default(now())
+  product         Product   @relation(fields: [productId], references: [id])
+
+  /// Index for date-based sales queries
+  @@index([createdAt])
+  /// Index for batch lookup (void operations)
+  @@index([batchId])
+  /// Index for product-based sales queries
+  @@index([productId])
+  /// Index for supervisor filtering
+  @@index([supervisor])
+  /// Index for payment status filtering
+  @@index([isPaid])
+  @@map("sales")
+}
+
+/// Monthly sales snapshot for historical tracking
+model MonthlySummary {
+  id            String   @id @default(cuid())
+  year          Int
+  month         Int
+  totalRevenue  Int
+  totalSold     Int
+  totalProducts Int
+  topProductId  String?
+  topProductSold Int     @default(0)
+  createdAt     DateTime @default(now())
+
+  @@unique([year, month])
+  @@map("monthly_summaries")
+}
+
+/// Supervisor, admin, and support users. Admin/support are env-based; only supervisors in DB.
+model User {
+  id                 String   @id @default(cuid())
+  username           String   @unique
+  passwordHash       String
+  role               String   // "supervisor" only (admin/support are env-based)
+  supervisorName     String?  // For supervisors: matches Sale.supervisor
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true) // Admin sets temp password; user must change on first login
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([username, isActive])
+  @@index([role])
+  @@map("users")
+}
+
+/// Single admin credential for dashboard access
+model AdminCredential {
+  id           String   @id
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin_credentials")
+}
+
+/// Seller (nombre vendedor) options for sale form. Admin manages in Ajustes.
+model Seller {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("sellers")
+}
+
+/// Tracks WhatsApp/call clicks per invoice batch for analytics.
+model InvoiceContactTracking {
+  batchId       String   @id
+  whatsappCount Int      @default(0)
+  callCount     Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@map("invoice_contact_tracking")
+}
+
+/// Admin settings for dashboard configuration
+model AdminSettings {
+  id                 String   @id @default("default")
+  lowStockThreshold  Int      @default(5)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("admin_settings")
+}

@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+/* Tailwind v4 theme configuration */
+@theme {
+  /* Core brand colors */
+  --color-jet: #000000;
+  --color-porcelain: #FEFEFE;
+  
+  /* Aqua palette */
+  --color-aqua-50: #D6F8FF;
+  --color-aqua-500: #08D5FA;
+  --color-aqua-700: #007C92;
+  
+  /* Luxury neutrals */
+  --color-onyx: #0B0F14;
+  --color-graphite: #141A22;
+  --color-smoke: #2A3441;
+  --color-pearl: #F6F3EE;
+  
+  /* Gold palette */
+  --color-gold-200: #D8C3A5;
+  --color-gold-500: #C8A96A;
+  
+  /* Semantic */
+  --color-success: #1F8A70;
+  --color-danger: #B42318;
+  
+  /* Custom gradients */
+  --background-image-lux-dark: linear-gradient(180deg, #0B0F14 0%, #141A22 100%);
+}
+
+:root {
+  /* Legacy CSS variables for custom classes */
+  --jet: #000000;
+  --porcelain: #FEFEFE;
+  --aqua-shine: #08D5FA;
+  --onyx: #0B0F14;
+  --graphite: #141A22;
+  --smoke: #2A3441;
+  --pearl: #F6F3EE;
+  --champagne-gold: #D8C3A5;
+  --soft-gold: #C8A96A;
+  --aqua-deep: #007C92;
+  --aqua-fog: #D6F8FF;
+  --success: #1F8A70;
+  --danger: #B42318;
+}
+
+/* Base styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--onyx);
+  color: var(--porcelain);
+}
+
+/* Custom utility classes */
+.text-gradient-gold {
+  background: linear-gradient(90deg, var(--champagne-gold), var(--soft-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.btn-primary {
+  background-color: var(--aqua-shine);
+  color: var(--jet);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 20px rgba(8, 213, 250, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid var(--soft-gold);
+  color: var(--porcelain);
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--graphite);
+}
+
+/* Subtle bounce animation for WhatsApp float */
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+/* Touch-friendly tap targets */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area padding for notched devices (iPhone, iPad with home indicator) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-inset-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .safe-area-inset-left {
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+  .safe-area-inset-right {
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* Landscape mode optimizations for mobile devices */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Reduce vertical spacing in landscape on small-height screens */
+  .landscape-compact {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}
+
+/* iPad-specific adjustments */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Ensure touch targets are still comfortable on tablets */
+  input, select, textarea, button {
+    min-height: 44px;
+  }
+}
+
+/* Print-only elements (hidden on screen, shown when printing) */
+.print-only {
+  display: none;
+}
+
+/* Print styles for invoices */
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide elements that shouldn't print */
+  header,
+  nav,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Show only invoice content */
+  #invoice-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+    padding: 2rem !important;
+  }
+
+  /* Custom print utilities (replaces Tailwind print: variants) */
+  .print-p-8 {
+    padding: 2rem !important;
+  }
+  .print-mb-8 {
+    margin-bottom: 2rem !important;
+  }
+  .print-h-20 {
+    height: 5rem !important;
+  }
+  .print-border {
+    border-width: 1px !important;
+    border-style: solid !important;
+  }
+  .print-border-jet-20 {
+    border-color: rgba(0, 0, 0, 0.2) !important;
+  }
+  .print-pt-6 {
+    padding-top: 1.5rem !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+
+  /* Page settings */
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+}
+
+/* Remove focus/active highlight on provincia pie chart segments */
+.provincia-chart-no-focus *:focus,
+.provincia-chart-no-focus *:focus-visible {
+  outline: none !important;
+}
+
+
