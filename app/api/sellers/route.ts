@@ -3,25 +3,13 @@ import { db } from "@/lib/db";
 import { requireAdminOrSupport, requireSupervisorOrAbove, applyRateLimit } from "@/lib/apiAuth";
 import { z } from "zod";
 
-const DEFAULT_SELLERS = [
-  "Marlenys Nolasco",
-  "Braulio Nolasco",
-  "Joselo Guzman",
-  "Aneudy Guzman",
-  "Yuleny Berroa",
-  "Marian De La Cruz",
-  "Alejandro Lara",
-  "Jeral Frias",
-  "Felix Santos",
-];
-
 const CreateSellerSchema = z.object({
   name: z.string().min(1, "Nombre requerido").max(200).transform((s) => s.trim()),
 });
 
 /**
  * GET /api/sellers
- * Returns list of seller names. Seeds default list if empty.
+ * Returns list of sellers from the database. Empty list is valid (no auto-seed).
  * Requires supervisor or above (for sale form).
  */
 export async function GET() {
@@ -29,21 +17,10 @@ export async function GET() {
   if (authError) return authError;
 
   try {
-    let sellers = await db.seller.findMany({
+    const sellers = await db.seller.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     });
-
-    if (sellers.length === 0) {
-      await db.seller.createMany({
-        data: DEFAULT_SELLERS.map((name) => ({ name })),
-      });
-      sellers = await db.seller.findMany({
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-      });
-    }
-
     return NextResponse.json(sellers);
   } catch (error) {
     console.error("Error fetching sellers:", error);
