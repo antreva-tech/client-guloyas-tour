@@ -171,12 +171,20 @@ export const SaleItemSchema = z.object({
 /**
  * Valid supervisor options.
  */
-export const SUPERVISORS = [
-  "Braulio Nolasco",
-  "Marlenys Nolasco",
-  "Felix Santos",
-] as const;
+export const SUPERVISORS = [] as const;
 export type Supervisor = typeof SUPERVISORS[number];
+
+/**
+ * Schema for one additional person in a reservation (kid or adult).
+ * Stored in Sale.personasAdditional as an array of these objects.
+ */
+export const PersonaAdditionalSchema = z.object({
+  type: z.enum(["kid", "adult"]),
+  name: z.string().min(1, "Nombre es requerido").max(200),
+  dateOfBirth: z.string().max(20).optional(),
+  cedulaPassport: z.string().max(50).optional(),
+  phone: z.string().max(50).optional(),
+});
 
 /**
  * Schema for creating a new sale.
@@ -193,6 +201,7 @@ export const CreateSaleSchema = z.object({
   provincia: z.string().max(100).optional(),
   municipio: z.string().max(100).optional(),
   customerAddress: z.string().max(300).optional(),
+  personasAdditional: z.array(PersonaAdditionalSchema).max(50).optional(),
   notes: z.string().max(1000).optional(),
   fechaEntrega: z.string().optional(), /// Set server-side from reservation creation time
   fechaVisita: z.string().min(1, "Fecha del tour es requerida"),
@@ -225,6 +234,7 @@ export const UpdateInvoiceSchema = z.object({
   provincia: z.string().max(100).optional(),
   municipio: z.string().max(100).optional(),
   customerAddress: z.string().max(300).nullable().optional(),
+  personasAdditional: z.array(PersonaAdditionalSchema).max(50).nullable().optional(),
   notes: z.string().max(1000).nullable().optional(),
   fechaEntrega: z.string().nullable().optional(),
   fechaVisita: z.string().nullable().optional(),
@@ -263,6 +273,7 @@ export function formatZodError(error: z.ZodError): string {
 
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
+export type PersonaAdditional = z.infer<typeof PersonaAdditionalSchema>;
 export type CreateSaleInput = z.infer<typeof CreateSaleSchema>;
 export type VoidSaleInput = z.infer<typeof VoidSaleSchema>;
 export type UpdatePhoneInput = z.infer<typeof UpdatePhoneSchema>;

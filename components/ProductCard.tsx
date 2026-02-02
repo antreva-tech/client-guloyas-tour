@@ -291,7 +291,7 @@ export function ProductCard({
             </span>
             {product.childPrice != null && product.childPrice > 0 && (
               <span className={`text-sm font-medium ${isSoldOut ? "text-brand-muted" : "text-amber-600"}`}>
-                Kid {product.currency} {product.childPrice.toLocaleString()}
+                Niño {product.currency} {product.childPrice.toLocaleString()}
               </span>
             )}
           </div>

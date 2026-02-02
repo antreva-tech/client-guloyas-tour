@@ -173,6 +173,7 @@ export async function PATCH(
               provincia: true,
               municipio: true,
               customerAddress: true,
+              personasAdditional: true,
               notes: true,
               fechaEntrega: true,
               fechaVisita: true,

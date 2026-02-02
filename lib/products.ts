@@ -60,18 +60,41 @@ export function isImportOnlyProduct(product: { name: string }): boolean {
 
 const excludeImportOnly = { name: { not: IMPORT_ONLY_PRODUCT_NAME } };
 
+/** Start of today UTC; tours with tourDate before this are excluded from public catalog. */
+function startOfTodayUTC(): Date {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Where clause so only current/future-dated tours appear in catalog (null = no date = always show). */
+function catalogNotExpiredWhere() {
+  return {
+    OR: [
+      { tourDate: null },
+      { tourDate: { gte: startOfTodayUTC() } },
+    ],
+  };
+}
+
 /**
- * Retrieves all active tours. Excludes import-only placeholder.
+ * Retrieves all active tours for public catalog.
+ * Excludes import-only placeholder and tours whose tourDate has passed.
  */
 export async function getActiveProducts(): Promise<Tour[]> {
   return db.tour.findMany({
-    where: { isActive: true, ...excludeImportOnly },
+    where: {
+      isActive: true,
+      ...excludeImportOnly,
+      ...catalogNotExpiredWhere(),
+    },
     orderBy: [{ sequence: "asc" }, { createdAt: "desc" }],
   });
 }
 
 /**
- * Retrieves active tours with pagination.
+ * Retrieves active tours with pagination for public catalog.
+ * Excludes tours whose tourDate has passed.
  */
 export async function getActiveProductsPaginated(
   options: PaginationOptions = {}
@@ -79,15 +102,16 @@ export async function getActiveProductsPaginated(
   const page = Math.max(1, options.page ?? DEFAULT_PAGE);
   const limit = Math.min(MAX_LIMIT, Math.max(1, options.limit ?? DEFAULT_LIMIT));
   const skip = (page - 1) * limit;
+  const where = { isActive: true, ...excludeImportOnly, ...catalogNotExpiredWhere() };
 
   const [data, total] = await Promise.all([
     db.tour.findMany({
-      where: { isActive: true, ...excludeImportOnly },
+      where,
       orderBy: [{ sequence: "asc" }, { createdAt: "desc" }],
       skip,
       take: limit,
     }),
-    db.tour.count({ where: { isActive: true, ...excludeImportOnly } }),
+    db.tour.count({ where }),
   ]);
 
   const totalPages = Math.ceil(total / limit);

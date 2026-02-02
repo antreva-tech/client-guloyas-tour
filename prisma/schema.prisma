@@ -53,6 +53,7 @@ model Sale {
   provincia        String?
   municipio        String?
   customerAddress  String?
+  personasAdditional Json?   /// Additional people in reservation: [{ type, name, dateOfBirth, cedulaPassport, phone? }]
   notes            String?
   fechaEntrega     DateTime?
   fechaVisita      DateTime? /// Tour date (required via API; may be sourced from Tour.tourDate)

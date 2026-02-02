@@ -19,8 +19,20 @@ interface ProductInfo {
   line: string;
   price: number;
   currency: string;
-  /** Optional children price; used to show Adult/Kid label per line. */
+  /** Optional children price; used to show Adult/Niño label per line. */
   childPrice?: number | null;
+}
+
+/**
+ * One additional person in a reservation (kid or adult).
+ * Stored in Sale.personasAdditional.
+ */
+export interface PersonaAdditional {
+  type: "kid" | "adult";
+  name: string;
+  dateOfBirth?: string;
+  cedulaPassport?: string;
+  phone?: string;
 }
 
 /**
@@ -41,6 +53,7 @@ interface SaleRecord {
   provincia: string;
   municipio: string;
   customerAddress?: string | null;
+  personasAdditional?: PersonaAdditional[] | null;
   notes?: string | null;
   fechaEntrega: string;
   fechaVisita: string;
@@ -72,6 +85,7 @@ interface InvoiceSummary {
   provincia: string;
   municipio: string;
   customerAddress: string;
+  personasAdditional: PersonaAdditional[];
   notes: string;
   fechaEntrega: string;
   fechaVisita: string;
@@ -177,6 +191,7 @@ function groupSalesByBatch(
     const customerAddress = sale.customerAddress || legacyInfo.address;
     const notes = sale.customerName ? (sale.notes || "") : legacyInfo.notes;
 
+    const personasList = (sale as SaleRecord & { personasAdditional?: PersonaAdditional[] | null }).personasAdditional ?? [];
     if (!existing) {
       const stats = contactStats?.[sale.batchId];
       map.set(sale.batchId, {
@@ -188,6 +203,7 @@ function groupSalesByBatch(
         provincia: sale.provincia || "",
         municipio: sale.municipio || "",
         customerAddress: customerAddress || "",
+        personasAdditional: Array.isArray(personasList) ? personasList : [],
         notes,
         fechaEntrega: sale.fechaEntrega || "",
         fechaVisita: sale.fechaVisita || "",
@@ -1221,6 +1237,9 @@ function InvoiceDetailModal({
     customerAddress: invoice.customerAddress || "",
     notes: invoice.notes || "",
   });
+  const [editPersonasAdditional, setEditPersonasAdditional] = useState<PersonaAdditional[]>(
+    invoice.personasAdditional?.length ? [...invoice.personasAdditional] : []
+  );
   const [editSale, setEditSale] = useState({
     fechaEntrega: invoice.fechaEntrega ? invoice.fechaEntrega.slice(0, 10) : "",
     fechaVisita: invoice.fechaVisita ? invoice.fechaVisita.slice(0, 10) : "",
@@ -1241,13 +1260,14 @@ function InvoiceDetailModal({
       customerAddress: invoice.customerAddress || "",
       notes: invoice.notes || "",
     });
+    setEditPersonasAdditional(invoice.personasAdditional?.length ? [...invoice.personasAdditional] : []);
     setEditSale({
       fechaEntrega: invoice.fechaEntrega ? invoice.fechaEntrega.slice(0, 10) : "",
       fechaVisita: invoice.fechaVisita ? invoice.fechaVisita.slice(0, 10) : "",
       supervisor: invoice.supervisor || "",
       nombreVendedor: invoice.nombreVendedor || "",
     });
-  }, [invoice.batchId, invoice.customerLabel, invoice.customerPhone, invoice.cedula, invoice.provincia, invoice.municipio, invoice.customerAddress, invoice.notes, invoice.fechaEntrega, invoice.fechaVisita, invoice.supervisor, invoice.nombreVendedor, invoice.whatsappCount, invoice.callCount]);
+  }, [invoice.batchId, invoice.customerLabel, invoice.customerPhone, invoice.cedula, invoice.provincia, invoice.municipio, invoice.customerAddress, invoice.notes, invoice.fechaEntrega, invoice.fechaVisita, invoice.supervisor, invoice.nombreVendedor, invoice.whatsappCount, invoice.callCount, invoice.personasAdditional]);
 
   const dateLabel = formatDateTime(invoice.createdAt);
   const voidedDateLabel = invoice.voidedAt ? formatDateTime(invoice.voidedAt) : null;
@@ -1365,6 +1385,10 @@ function InvoiceDetailModal({
    */
   async function handleSaveCliente(e: React.FormEvent) {
     e.preventDefault();
+    if (editPersonasAdditional.length > 0 && editPersonasAdditional.some((p) => !p.name.trim())) {
+      setInvoiceEditError("Cada persona adicional debe tener un nombre.");
+      return;
+    }
     setIsUpdatingInvoice(true);
     setInvoiceEditError(null);
     try {
@@ -1378,6 +1402,10 @@ function InvoiceDetailModal({
           provincia: editCliente.provincia.trim(),
           municipio: editCliente.municipio.trim(),
           customerAddress: editCliente.customerAddress.trim() || null,
+          personasAdditional: (() => {
+            const valid = editPersonasAdditional.filter((p) => p.name.trim());
+            return valid.length ? valid.map((p) => ({ type: p.type, name: p.name.trim(), dateOfBirth: p.dateOfBirth || undefined, cedulaPassport: p.cedulaPassport || undefined, phone: p.phone || undefined })) : null;
+          })(),
           notes: editCliente.notes.trim() || null,
         }),
       });
@@ -1684,6 +1712,105 @@ function InvoiceDetailModal({
                   placeholder="Dirección"
                   className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-1.5 text-jet text-sm"
                 />
+                {/* Personas adicionales — premium card UI, name required */}
+                <div className="space-y-3">
+                  <p className="text-jet/70 text-xs font-semibold uppercase tracking-wider">Personas adicionales</p>
+                  {editPersonasAdditional.map((p, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded-xl border border-brand-border bg-porcelain p-3 shadow-sm transition-shadow focus-within:shadow-md"
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span
+                          className={`text-xs font-semibold uppercase tracking-wide px-2 py-1 rounded-lg ${
+                            p.type === "kid" ? "bg-brand-sky/15 text-brand-sky" : "bg-night-700/10 text-night-700"
+                          }`}
+                        >
+                          {p.type === "kid" ? "Niño/a" : "Adulto"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditPersonasAdditional((list) => list.filter((_, i) => i !== idx))}
+                          className="text-jet/50 hover:text-danger hover:bg-danger/10 rounded p-1 transition-colors"
+                          title="Quitar"
+                        >
+                          <span className="sr-only">Quitar</span>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <label htmlFor={`edit-persona-name-${idx}`} className="block text-xs font-medium text-jet/80 mb-0.5">
+                            Nombre <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            id={`edit-persona-name-${idx}`}
+                            type="text"
+                            value={p.name}
+                            onChange={(e) => setEditPersonasAdditional((list) => list.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)))}
+                            placeholder="Nombre completo"
+                            className="w-full rounded-lg border border-brand-border bg-white px-3 py-2 text-sm text-jet placeholder:text-jet/40 focus:outline-none focus:ring-2 focus:ring-brand-sky/50"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor={`edit-persona-dob-${idx}`} className="block text-xs font-medium text-jet/80 mb-0.5">Fecha de nacimiento</label>
+                          <input
+                            id={`edit-persona-dob-${idx}`}
+                            type="text"
+                            value={p.dateOfBirth ?? ""}
+                            onChange={(e) => setEditPersonasAdditional((list) => list.map((x, i) => (i === idx ? { ...x, dateOfBirth: e.target.value || undefined } : x)))}
+                            placeholder="Ej: 15/05/1990"
+                            className="w-full rounded-lg border border-brand-border bg-white px-3 py-2 text-sm text-jet placeholder:text-jet/40 focus:outline-none focus:ring-2 focus:ring-brand-sky/50"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor={`edit-persona-cedula-${idx}`} className="block text-xs font-medium text-jet/80 mb-0.5">Cédula/Passaporte</label>
+                          <input
+                            id={`edit-persona-cedula-${idx}`}
+                            type="text"
+                            value={p.cedulaPassport ?? ""}
+                            onChange={(e) => setEditPersonasAdditional((list) => list.map((x, i) => (i === idx ? { ...x, cedulaPassport: e.target.value || undefined } : x)))}
+                            placeholder="Número de documento"
+                            className="w-full rounded-lg border border-brand-border bg-white px-3 py-2 text-sm text-jet placeholder:text-jet/40 focus:outline-none focus:ring-2 focus:ring-brand-sky/50"
+                          />
+                        </div>
+                        {p.type === "adult" && (
+                          <div>
+                            <label htmlFor={`edit-persona-phone-${idx}`} className="block text-xs font-medium text-jet/80 mb-0.5">Teléfono <span className="text-jet/50 font-normal">(opcional)</span></label>
+                            <input
+                              id={`edit-persona-phone-${idx}`}
+                              type="tel"
+                              value={p.phone ?? ""}
+                              onChange={(e) => setEditPersonasAdditional((list) => list.map((x, i) => (i === idx ? { ...x, phone: e.target.value || undefined } : x)))}
+                              placeholder="Ej: 8095551234"
+                              className="w-full rounded-lg border border-brand-border bg-white px-3 py-2 text-sm text-jet placeholder:text-jet/40 focus:outline-none focus:ring-2 focus:ring-brand-sky/50"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditPersonasAdditional((list) => [...list, { type: "kid", name: "" }])}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-brand-sky/40 bg-brand-sky/10 px-3 py-2 text-sm font-medium text-brand-sky hover:bg-brand-sky/20 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                      Niño/a
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditPersonasAdditional((list) => [...list, { type: "adult", name: "" }])}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-night-700/40 bg-night-700/10 px-3 py-2 text-sm font-medium text-night-700 hover:bg-night-700/20 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                      Adulto
+                    </button>
+                  </div>
+                </div>
                 <input
                   type="text"
                   value={editCliente.notes}
@@ -1714,6 +1841,7 @@ function InvoiceDetailModal({
                         customerAddress: invoice.customerAddress || "",
                         notes: invoice.notes || "",
                       });
+                      setEditPersonasAdditional(invoice.personasAdditional?.length ? [...invoice.personasAdditional] : []);
                     }}
                     className="bg-jet/10 hover:bg-jet/20 text-jet px-3 py-1.5 rounded-lg text-xs font-medium"
                   >
@@ -1850,6 +1978,27 @@ function InvoiceDetailModal({
               <p className="text-jet/70 text-sm mt-2">
                 <span className="text-jet/50">Dir:</span> {invoice.customerAddress}
               </p>
+            )}
+
+            {invoice.personasAdditional?.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <p className="text-jet/60 text-xs font-semibold uppercase tracking-wider">Personas adicionales</p>
+                <div className="space-y-2">
+                  {invoice.personasAdditional.map((p, idx) => (
+                    <div key={idx} className="rounded-lg border border-brand-border bg-pearl/50 px-3 py-2 text-sm">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-lg ${p.type === "kid" ? "bg-brand-sky/15 text-brand-sky" : "bg-night-700/10 text-night-700"}`}>
+                          {p.type === "kid" ? "Niño/a" : "Adulto"}
+                        </span>
+                        <span className="text-jet font-medium">{p.name}</span>
+                        {p.dateOfBirth && <span className="text-jet/50">· Nac: {p.dateOfBirth}</span>}
+                        {p.cedulaPassport && <span className="text-jet/50">· Cédula/Pass: {p.cedulaPassport}</span>}
+                        {p.phone && <span className="text-jet/50">· Tel: {p.phone}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {invoice.notes && (
@@ -2009,7 +2158,7 @@ function InvoiceDetailModal({
                         const isKid = item.tour?.childPrice != null && unitPrice === item.tour.childPrice;
                         return (
                           <p className={`text-xs ${isKid ? "text-amber-600" : "text-jet/50"}`}>
-                            {item.quantity} × RD$ {unitPrice.toLocaleString()} ({isKid ? "Kid" : "Adult"})
+                            {item.quantity} × RD$ {unitPrice.toLocaleString()} ({isKid ? "Niño" : "Adulto"})
                           </p>
                         );
                       })()}
@@ -2346,7 +2495,7 @@ function InvoiceDetailModal({
                       {item.quantity}
                     </td>
                     <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "right", color: isKid ? "#b45309" : "#111", fontSize: "12px" }}>
-                      RD$ {unitPrice.toLocaleString()} ({isKid ? "Kid" : "Adult"})
+                      RD$ {unitPrice.toLocaleString()} ({isKid ? "Niño" : "Adulto"})
                     </td>
                     <td style={{ padding: "10px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "right", fontWeight: 600, color: "#111", fontSize: "12px" }}>
                       RD$ {item.total.toLocaleString()}

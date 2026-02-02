@@ -5,8 +5,7 @@ import Image from "next/image";
 import { brandConfig } from "@/lib/brandConfig";
 import type { Product } from "@/lib/products";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { InvoiceHistoryPanel } from "@/components/InvoiceHistoryPanel";
-import { ProvinciaPieChart } from "@/components/ProvinciaPieChart";
+import { InvoiceHistoryPanel, type PersonaAdditional } from "@/components/InvoiceHistoryPanel";
 import { getProvincias } from "@/lib/locationData";
 import { IMPORT_ONLY_PRODUCT_NAME, isImportOnlyProduct } from "@/lib/products";
 import { UNLIMITED_STOCK } from "@/lib/validation";
@@ -103,8 +102,7 @@ export function AdminDashboard({
     paidRevenue: number;
     paidUnits: number;
     topSellers: Array<{ nombreVendedor: string; totalRevenue: number; invoiceCount: number }>;
-    provinciaStats: Array<{ provincia: string; total: number }>;
-  }>({ paidRevenue: 0, paidUnits: 0, topSellers: [], provinciaStats: [] });
+  }>({ paidRevenue: 0, paidUnits: 0, topSellers: [] });
   const [invoiceListRefreshKey, setInvoiceListRefreshKey] = useState(0);
   const [confirmModal, setConfirmModal] = useState<{
     title: string;
@@ -125,7 +123,6 @@ export function AdminDashboard({
         paidRevenue: data.paidRevenue ?? 0,
         paidUnits: data.paidUnits ?? 0,
         topSellers: data.topSellers ?? [],
-        provinciaStats: data.provinciaStats ?? [],
       });
     }
   }
@@ -196,24 +193,8 @@ export function AdminDashboard({
     setIsCreating(false);
   }
 
-  // Calculate summary stats (exclude UNLIMITED_STOCK from total)
-  const totalStock = products.reduce((sum, p) => sum + (p.stock >= 0 ? p.stock : 0), 0);
   const totalSold = products.reduce((sum, p) => sum + p.sold, 0);
   const activeProducts = products.filter((p) => p.isActive).length;
-  const totalRevenue = products.reduce((sum, p) => sum + (p.price * p.sold), 0);
-  const lowStockProducts = products.filter((p) => {
-    if (p.stock <= 0) return false;
-    const threshold = (p as { lowSeatsThreshold?: number | null }).lowSeatsThreshold;
-    const effective = threshold != null ? threshold : lowStockThreshold;
-    return p.stock <= effective;
-  });
-  const outOfStockProducts = products.filter((p) => p.stock === 0 && p.isActive);
-  const usesInventory = products.some((p) => p.stock >= 0);
-  
-  // Best selling product
-  const bestSeller = products.length > 0 
-    ? products.reduce((best, p) => p.sold > best.sold ? p : best, products[0])
-    : null;
 
   /**
    * Saves current month snapshot to database.
@@ -312,100 +293,23 @@ export function AdminDashboard({
       {/* KPI Section */}
       {activeView === "overview" && (
         <div className="space-y-4">
-        {usesInventory ? (
-          <>
-            {/* Stock shown: Ingresos full-width above, then stats grid */}
-            <div className="bg-gradient-to-r from-aqua-700 to-aqua-500 rounded-xl p-4 tablet:p-5 tablet-lg:p-6 text-white">
-              <div className="flex flex-col landscape:flex-row landscape:items-center landscape:justify-between tablet:flex-row tablet:items-center tablet:justify-between gap-4">
-                <div>
-                  <p className="text-white/80 text-sm font-medium">Ingresos cobrados (facturas pagadas)</p>
-                  <p className="text-2xl mobile-landscape:text-3xl tablet:text-3xl tablet-lg:text-4xl font-bold mt-1">
-                    RD$ {paidStats.paidRevenue.toLocaleString()}
-                  </p>
-                  <p className="text-white/70 text-sm mt-2">
-                    {paidStats.paidUnits} unidades en facturas pagadas
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="grid gap-3 tablet:gap-4 grid-cols-2 mobile-landscape:grid-cols-4 tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-4">
-              <StatCard label="Tours Activos" value={activeProducts} />
-              <StatCard label="Plazas" value={totalStock} />
-              <StatCard
-                label="Plazas bajas"
-                value={lowStockProducts.length}
-                warning={lowStockProducts.length > 0}
-              />
-              <StatCard
-                label="Sin plazas"
-                value={outOfStockProducts.length}
-                danger={outOfStockProducts.length > 0}
-              />
-            </div>
-          </>
-        ) : (
-          /* Stock hidden: Ingresos next to Productos Activos, Ingresos larger */
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 tablet:gap-4">
-            <div className="sm:col-span-2 bg-gradient-to-r from-aqua-700 to-aqua-500 rounded-xl p-4 tablet:p-5 text-white">
+        {/* Tourism-focused KPIs: Ingresos, Tours Activos, Plazas vendidas */}
+        <div className="bg-gradient-to-r from-aqua-700 to-aqua-500 rounded-xl p-4 tablet:p-5 tablet-lg:p-6 text-white">
+          <div className="flex flex-col landscape:flex-row landscape:items-center landscape:justify-between tablet:flex-row tablet:items-center tablet:justify-between gap-4">
+            <div>
               <p className="text-white/80 text-sm font-medium">Ingresos cobrados (facturas pagadas)</p>
-              <p className="text-2xl mobile-landscape:text-3xl font-bold mt-1">
+              <p className="text-2xl mobile-landscape:text-3xl tablet:text-3xl tablet-lg:text-4xl font-bold mt-1">
                 RD$ {paidStats.paidRevenue.toLocaleString()}
               </p>
               <p className="text-white/70 text-sm mt-2">
-                {paidStats.paidUnits} unidades en facturas pagadas
+                {paidStats.paidUnits} plazas en facturas pagadas
               </p>
             </div>
-            <div className="flex items-stretch">
-              <div className="w-full rounded-xl border border-gold-200/50 bg-porcelain p-4 flex flex-col justify-center">
-                <p className="text-jet/60 text-xs uppercase tracking-wider">Productos Activos</p>
-                <p className="text-2xl font-bold text-jet mt-1">{activeProducts}</p>
-              </div>
-            </div>
           </div>
-        )}
-
-        {/* Best product & Top sellers & alerts */}
-        <div className="grid mobile-landscape:grid-cols-2 tablet:grid-cols-3 gap-3 tablet:gap-4">
-          {bestSeller && bestSeller.sold > 0 && (
-            <div className="bg-porcelain rounded-xl border border-gold-200/50 p-4">
-              <p className="text-jet/60 text-xs uppercase tracking-wider mb-2">Producto más vendido</p>
-              <p className="text-jet font-semibold">{bestSeller.name}</p>
-              <p className="text-aqua-700 text-sm">{bestSeller.line}</p>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gold-200/30">
-                <span className="text-gold-500 font-bold">{bestSeller.sold} vendidos</span>
-                <span className="text-jet/60 text-sm">
-                  RD$ {(bestSeller.price * bestSeller.sold).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-porcelain rounded-xl border border-gold-200/50 p-4 tablet:col-span-2 flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-jet/60 text-xs uppercase tracking-wider mb-2">Ventas por provincia</p>
-                <ProvinciaPieChart data={paidStats.provinciaStats} />
-              </div>
-            </div>
-          
-          {usesInventory && (lowStockProducts.length > 0 || outOfStockProducts.length > 0) && (
-            <div className="bg-porcelain rounded-xl border border-gold-200/50 p-4">
-              <p className="text-jet/60 text-xs uppercase tracking-wider mb-2">Alertas de plazas</p>
-              <div className="space-y-2">
-                {outOfStockProducts.slice(0, 2).map((p) => (
-                  <div key={p.id} className="flex items-center justify-between text-sm">
-                    <span className="text-jet truncate">{p.name} - {p.line}</span>
-                    <span className="text-danger font-medium shrink-0 ml-2">Sin plazas</span>
-                  </div>
-                ))}
-                {lowStockProducts.slice(0, 2).map((p) => (
-                  <div key={p.id} className="flex items-center justify-between text-sm">
-                    <span className="text-jet truncate">{p.name} - {p.line}</span>
-                    <span className="text-gold-500 font-medium shrink-0 ml-2">{p.stock} plazas</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        </div>
+        <div className="grid gap-3 tablet:gap-4 grid-cols-2 sm:grid-cols-3">
+          <StatCard label="Tours Activos" value={activeProducts} />
+          <StatCard label="Plazas vendidas" value={totalSold} />
         </div>
 
         <InvoiceHistoryPanel
@@ -1905,7 +1809,7 @@ function EditInvoiceModal({
                             const isKid = p?.childPrice != null && row.unitPrice === p.childPrice;
                             return (
                               <span className={`text-xs font-medium flex-shrink-0 ${isKid ? "text-amber-600" : "text-jet/70"}`}>
-                                ({isKid ? "Kid" : "Adult"})
+                                ({isKid ? "Niño" : "Adulto"})
                               </span>
                             );
                           })()}
@@ -2022,7 +1926,7 @@ function ProductDropdownPanel({
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className={`font-semibold text-sm ${isKid ? "text-amber-600" : "text-jet"}`}>
-                      RD$ {price.toLocaleString()} <span className="font-normal text-jet/70">({isKid ? "Kid" : "Adult"})</span>
+                      RD$ {price.toLocaleString()} <span className="font-normal text-jet/70">({isKid ? "Niño" : "Adulto"})</span>
                     </p>
                     <p className={`text-xs ${outOfStock ? "text-danger" : "text-jet/50"}`}>
                       {outOfStock ? "Sin plazas" : p.stock === UNLIMITED_STOCK ? "Siempre disponible" : `Plazas: ${p.stock}`}
@@ -2101,6 +2005,7 @@ function SaleForm({
 
   // Optional fields
   const [customerAddress, setCustomerAddress] = useState("");
+  const [personasAdditional, setPersonasAdditional] = useState<PersonaAdditional[]>([]);
   const [notes, setNotes] = useState("");
   const [isPaid, setIsPaid] = useState(false);
 
@@ -2250,6 +2155,7 @@ function SaleForm({
     if (!customerName.trim()) invalid.add("customerName");
     if (!customerPhone.trim()) invalid.add("customerPhone");
     if (!fechaVisita) invalid.add("fechaVisita");
+    if (personasAdditional.length > 0 && personasAdditional.some((p) => !p.name.trim())) invalid.add("personasAdditional");
 
     if (invalid.size === 0) {
       return { error: null, invalidFields: invalid };
@@ -2260,6 +2166,7 @@ function SaleForm({
     if (invalid.has("customerName")) return { error: "El nombre del cliente es requerido", invalidFields: invalid };
     if (invalid.has("customerPhone")) return { error: "El teléfono es requerido", invalidFields: invalid };
     if (invalid.has("fechaVisita")) return { error: "La fecha del tour es requerida", invalidFields: invalid };
+    if (invalid.has("personasAdditional")) return { error: "Cada persona adicional debe tener un nombre", invalidFields: invalid };
 
     return { error: "Por favor completa los campos requeridos", invalidFields: invalid };
   }
@@ -2324,6 +2231,10 @@ function SaleForm({
           provincia: provincia.trim() || undefined,
           municipio: municipio.trim() || undefined,
           customerAddress: customerAddress.trim() || undefined,
+          personasAdditional: (() => {
+            const valid = personasAdditional.filter((p) => p.name.trim());
+            return valid.length ? valid.map((p) => ({ type: p.type, name: p.name.trim(), dateOfBirth: p.dateOfBirth || undefined, cedulaPassport: p.cedulaPassport || undefined, phone: p.phone || undefined })) : undefined;
+          })(),
           notes: notes.trim() || undefined,
           fechaVisita,
           isPaid,
@@ -2489,7 +2400,7 @@ function SaleForm({
                             const isKid = item.priceLabel === "kid" || (p?.childPrice != null && item.unitPrice === p.childPrice);
                             return (
                               <span className={`text-xs font-medium ${isKid ? "text-amber-600" : "text-jet/70"}`}>
-                                ({isKid ? "Kid" : "Adult"})
+                                ({isKid ? "Ni" : "Adult"})
                               </span>
                             );
                           })()}
@@ -2618,6 +2529,122 @@ function SaleForm({
               className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
               placeholder="Calle, sector..."
             />
+          </div>
+
+          {/* Personas adicionales (kids / adults in reservation) — premium card UI, name required */}
+          <div className="space-y-3">
+            <label className="block text-xs font-semibold text-jet/70 uppercase tracking-wider">
+              Personas adicionales
+            </label>
+            {personasAdditional.map((p, idx) => (
+              <div
+                key={idx}
+                className={`rounded-xl border bg-porcelain p-3 shadow-sm transition-shadow focus-within:shadow-md ${
+                  fieldErrors.has("personasAdditional") && !p.name.trim()
+                    ? "border-danger/60 ring-1 ring-danger/20"
+                    : "border-brand-border"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span
+                    className={`text-xs font-semibold uppercase tracking-wide px-2 py-1 rounded-lg ${
+                      p.type === "kid"
+                        ? "bg-brand-sky/15 text-brand-sky"
+                        : "bg-night-700/10 text-night-700"
+                    }`}
+                  >
+                    {p.type === "kid" ? "Niño/a" : "Adulto"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPersonasAdditional((list) => list.filter((_, i) => i !== idx));
+                      clearFieldError("personasAdditional");
+                    }}
+                    className="text-jet/50 hover:text-danger hover:bg-danger/10 rounded p-1 transition-colors"
+                    title="Quitar"
+                  >
+                    <span className="sr-only">Quitar</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <label htmlFor={`persona-name-${idx}`} className="block text-xs font-medium text-jet/80 mb-0.5">
+                      Nombre <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      id={`persona-name-${idx}`}
+                      type="text"
+                      value={p.name}
+                      onChange={(e) => {
+                        setPersonasAdditional((list) => list.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)));
+                        clearFieldError("personasAdditional");
+                      }}
+                      placeholder="Nombre completo"
+                      className={`w-full rounded-lg border bg-white px-3 py-2 text-sm text-jet placeholder:text-jet/40 focus:outline-none focus:ring-2 focus:ring-brand-sky/50 ${
+                        fieldErrors.has("personasAdditional") && !p.name.trim() ? "border-danger" : "border-brand-border"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={`persona-dob-${idx}`} className="block text-xs font-medium text-jet/80 mb-0.5">Fecha de nacimiento</label>
+                    <input
+                      id={`persona-dob-${idx}`}
+                      type="text"
+                      value={p.dateOfBirth ?? ""}
+                      onChange={(e) => setPersonasAdditional((list) => list.map((x, i) => (i === idx ? { ...x, dateOfBirth: e.target.value || undefined } : x)))}
+                      placeholder="Ej: 15/05/1990"
+                      className="w-full rounded-lg border border-brand-border bg-white px-3 py-2 text-sm text-jet placeholder:text-jet/40 focus:outline-none focus:ring-2 focus:ring-brand-sky/50"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={`persona-cedula-${idx}`} className="block text-xs font-medium text-jet/80 mb-0.5">Cédula/Passaporte</label>
+                    <input
+                      id={`persona-cedula-${idx}`}
+                      type="text"
+                      value={p.cedulaPassport ?? ""}
+                      onChange={(e) => setPersonasAdditional((list) => list.map((x, i) => (i === idx ? { ...x, cedulaPassport: e.target.value || undefined } : x)))}
+                      placeholder="Número de documento"
+                      className="w-full rounded-lg border border-brand-border bg-white px-3 py-2 text-sm text-jet placeholder:text-jet/40 focus:outline-none focus:ring-2 focus:ring-brand-sky/50"
+                    />
+                  </div>
+                  {p.type === "adult" && (
+                    <div>
+                      <label htmlFor={`persona-phone-${idx}`} className="block text-xs font-medium text-jet/80 mb-0.5">Teléfono <span className="text-jet/50 font-normal">(opcional)</span></label>
+                      <input
+                        id={`persona-phone-${idx}`}
+                        type="tel"
+                        value={p.phone ?? ""}
+                        onChange={(e) => setPersonasAdditional((list) => list.map((x, i) => (i === idx ? { ...x, phone: e.target.value || undefined } : x)))}
+                        placeholder="Ej: 8095551234"
+                        className="w-full rounded-lg border border-brand-border bg-white px-3 py-2 text-sm text-jet placeholder:text-jet/40 focus:outline-none focus:ring-2 focus:ring-brand-sky/50"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPersonasAdditional((list) => [...list, { type: "kid", name: "" }])}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-sky/40 bg-brand-sky/10 px-3 py-2 text-sm font-medium text-brand-sky hover:bg-brand-sky/20 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Niño/a
+              </button>
+              <button
+                type="button"
+                onClick={() => setPersonasAdditional((list) => [...list, { type: "adult", name: "" }])}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-night-700/40 bg-night-700/10 px-3 py-2 text-sm font-medium text-night-700 hover:bg-night-700/20 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Adulto
+              </button>
+            </div>
           </div>
 
           <div>
@@ -2824,7 +2851,7 @@ function Invoice({
                   <td className="py-3 text-center text-jet">{item.quantity}</td>
                   <td className="py-3 text-right">
                     <span className={isKid ? "text-amber-600" : "text-jet/70"}>
-                      RD$ {item.unitPrice.toLocaleString()} ({isKid ? "Kid" : "Adult"})
+                      RD$ {item.unitPrice.toLocaleString()} ({isKid ? "Niño" : "Adulto"})
                     </span>
                   </td>
                   <td className="py-3 text-right text-jet font-medium">
