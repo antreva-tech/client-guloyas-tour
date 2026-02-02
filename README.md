@@ -1,6 +1,18 @@
-# Retail Web Dashboard Template
+# Guloyas Tours
 
-Admin dashboard and public catalog for retail products. White-label template — customize via environment variables for each client.
+Admin dashboard and public catalog for **Guloyas Tours SRL** — tourism agency (Dominican Republic and international tours). Manage tours, bookings, sellers, invoices, and WhatsApp messaging.
+
+## Client
+
+| Field | Value |
+|-------|--------|
+| **Legal name** | Guloyas Tours SRL |
+| **RNC** | 132-93225-2 |
+| **Address** | C/ Casimira Hereaux 4, Enriquillo, San Pedro de Macorís DR 21000 |
+| **Email** | guloyastours@gmail.com |
+| **Phone** | +1 (829) 718-8926 / +1 (809) 399-4401 |
+
+See [docs/client-info.md](docs/client-info.md) for environment variable mapping and [docs/guloyas-tours-brand-doc.md](docs/guloyas-tours-brand-doc.md) for brand and UI guidelines.
 
 ## Tech Stack
 
@@ -21,16 +33,17 @@ Admin dashboard and public catalog for retail products. White-label template —
 Copy `.env.example` to `.env` and fill in values. Key variables:
 
 ```env
-# Brand (customize per client — see .env.example)
-NEXT_PUBLIC_BRAND_NAME="Your Brand"
-NEXT_PUBLIC_SITE_URL="https://example.com"
-# ... see .env.example for full list
+# Brand (Guloyas Tours — see docs/client-info.md for mapping)
+NEXT_PUBLIC_BRAND_NAME="Guloyas Tours"
+NEXT_PUBLIC_SITE_URL="https://your-domain.com"
+NEXT_PUBLIC_CONTACT_EMAIL="guloyastours@gmail.com"
+NEXT_PUBLIC_WHATSAPP_NUMBER="18297188926"
 
 # Database (required)
 DATABASE_URL="postgresql://..."
 DIRECT_URL="postgresql://..."
 
-# Session (required - generate with: openssl rand -hex 32)
+# Session (required — generate with: openssl rand -hex 32)
 SESSION_SECRET="your-random-secret"
 
 # Admin credentials (required)
@@ -40,7 +53,7 @@ SUPPORT_PASSWORD_HASH="scrypt::salt::hash"
 # Cron jobs (required for Vercel cron)
 CRON_SECRET="your-cron-secret"
 
-# Rate limiting (optional - recommended for production)
+# Rate limiting (optional — recommended for production)
 UPSTASH_REDIS_REST_URL="https://..."
 UPSTASH_REDIS_REST_TOKEN="..."
 ```
@@ -79,6 +92,7 @@ Open http://localhost:3000
 ### Password Policy
 
 Passwords must have:
+
 - Minimum 8 characters
 - At least one uppercase letter
 - At least one lowercase letter
@@ -93,6 +107,7 @@ Passwords must have:
 ### Security Headers
 
 Configured in `next.config.ts`:
+
 - X-Frame-Options: DENY
 - X-Content-Type-Options: nosniff
 - Referrer-Policy: strict-origin-when-cross-origin
@@ -118,9 +133,11 @@ app/
 │   ├── settings/    # Password change, user management
 │   └── page.tsx     # Main dashboard
 ├── api/             # API routes
-│   ├── products/    # Product CRUD
+│   ├── products/    # Tours CRUD (products schema)
 │   ├── sales/       # Sales/invoices
 │   ├── users/       # User management
+│   ├── sellers/     # Seller management
+│   ├── whatsapp/    # WhatsApp messaging / webhook
 │   └── ...
 └── page.tsx         # Public catalog
 
@@ -130,18 +147,19 @@ lib/
 ├── rateLimit.ts     # Rate limiting (Upstash + fallback)
 ├── passwordPolicy.ts # Password validation
 ├── validation.ts    # Zod schemas
+├── whatsapp.ts      # WhatsApp integration
 └── db.ts            # Prisma client
 
-components/          # React components
+components/           # React components
 prisma/
-└── schema.prisma    # Database schema
+└── schema.prisma    # Database schema (tours, sales, sellers, etc.)
 ```
 
 ## User Roles
 
 | Role | Access |
 |------|--------|
-| **admin** | Full access (products, sales, users, settings) |
+| **admin** | Full access (tours, sales, users, settings) |
 | **support** | Admin access + can reset admin password |
 | **supervisor** | Sales only (filtered to their invoices) |
 
@@ -153,8 +171,8 @@ Deploy to Vercel:
 vercel
 ```
 
-Or connect your GitHub repository to Vercel for automatic deployments.
+Or connect the repository to Vercel for automatic deployments.
 
 ## License
 
-Proprietary — Kairu Enterprises
+Proprietary — Antreva Tech
