@@ -13,3 +13,6 @@ export { Contact } from "./Contact";
 export { Footer } from "./Footer";
 export { WhatsAppFloat } from "./WhatsAppFloat";
 export { SeoStructuredData, type FaqItem } from "./SeoStructuredData";
+export { NewsSection, type NewsPostItem } from "./NewsSection";
+export { HotelOffersSection, type HotelOfferItem } from "./HotelOffersSection";
+export { FlightRequestSection } from "./FlightRequestSection";

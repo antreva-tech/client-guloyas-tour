@@ -4,6 +4,9 @@ import {
   Hero,
   About,
   Catalog,
+  NewsSection,
+  HotelOffersSection,
+  FlightRequestSection,
   Shipping,
   Contact,
   Footer,
@@ -70,6 +73,9 @@ export default async function Home() {
         <Hero />
         <Catalog tours={tours} defaultLowSeatsThreshold={defaultLowSeatsThreshold} />
         <About />
+        <NewsSection />
+        <HotelOffersSection />
+        <FlightRequestSection />
         <Shipping />
         <Contact />
       </main>

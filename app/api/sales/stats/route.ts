@@ -30,6 +30,7 @@ export async function GET() {
   try {
     const [
       paid,
+      unpaidAbono,
       sales,
       provinciaSales,
       pendingAgg,
@@ -42,6 +43,10 @@ export async function GET() {
       db.sale.aggregate({
         where: { isPaid: true, voidedAt: null },
         _sum: { total: true, quantity: true },
+      }),
+      db.sale.aggregate({
+        where: { isPaid: false, voidedAt: null },
+        _sum: { abono: true },
       }),
       db.sale.findMany({
         where: {
@@ -155,8 +160,12 @@ export async function GET() {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
 
+    /** Ingresos cobrados = full total for paid invoices + abono (deposit) for unpaid. */
+    const paidRevenue =
+      (paid._sum.total ?? 0) + (unpaidAbono._sum.abono ?? 0);
+
     return NextResponse.json({
-      paidRevenue: paid._sum.total ?? 0,
+      paidRevenue,
       paidUnits: paid._sum.quantity ?? 0,
       topSellers,
       provinciaStats,

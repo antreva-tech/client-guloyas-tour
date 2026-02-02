@@ -16,6 +16,9 @@ import { UNLIMITED_STOCK } from "@/lib/validation";
 import { formatDateTime } from "@/lib/formatDate";
 import { formatPhoneForDisplay } from "@/lib/phone";
 import { canSeeResumen, canSeeProducts, canDeleteVoidedInvoices } from "@/lib/permissions";
+import { NewsManagementSection } from "./NewsManagementSection";
+import { HotelOffersManagementSection } from "./HotelOffersManagementSection";
+import { FlightRequestsManagementSection } from "./FlightRequestsManagementSection";
 import type { SessionRole } from "@/lib/permissions";
 
 interface AdminDashboardProps {
@@ -77,7 +80,7 @@ interface CompletedSale {
   date: string;
 }
 
-type AdminView = "overview" | "products" | "sales" | "messages";
+type AdminView = "overview" | "products" | "sales" | "messages" | "news" | "hotelOffers" | "flightRequests";
 
 export function AdminDashboard({
   initialProducts,
@@ -315,6 +318,31 @@ export function AdminDashboard({
           >
             Mensajes
           </button>
+          {(role === "admin" || role === "support") && (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveView("news")}
+                className={`${getViewButtonClass("news")} whitespace-nowrap flex-shrink-0`}
+              >
+                Noticias
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView("hotelOffers")}
+                className={`${getViewButtonClass("hotelOffers")} whitespace-nowrap flex-shrink-0`}
+              >
+                Ofertas hoteles
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView("flightRequests")}
+                className={`${getViewButtonClass("flightRequests")} whitespace-nowrap flex-shrink-0`}
+              >
+                Reservas vuelo
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -325,7 +353,7 @@ export function AdminDashboard({
         <div className="bg-gradient-to-r from-aqua-700 to-aqua-500 rounded-xl p-4 tablet:p-5 tablet-lg:p-6 text-white">
           <div className="flex flex-col landscape:flex-row landscape:items-center landscape:justify-between tablet:flex-row tablet:items-center tablet:justify-between gap-4">
             <div>
-              <p className="text-white/80 text-sm font-medium">Ingresos cobrados (facturas pagadas)</p>
+              <p className="text-white/80 text-sm font-medium" title="Incluye total de facturas pagadas y depósitos (abonos) de facturas pendientes">Ingresos cobrados</p>
               <p className="text-2xl mobile-landscape:text-3xl tablet:text-3xl tablet-lg:text-4xl font-bold mt-1">
                 RD$ {paidStats.paidRevenue.toLocaleString()}
               </p>
@@ -430,6 +458,7 @@ export function AdminDashboard({
           showRefresh={false}
           showSupervisorFilter={false}
           showDeleteVoidedActions={canDeleteVoidedInvoices(role)}
+          onPaymentUpdated={() => void refreshPaidStats()}
           onInvoiceDeleted={() => void refreshPaidStats()}
           title="Últimas 5 facturas"
           subtitle="Vista rápida de las ventas recientes"
@@ -560,6 +589,7 @@ export function AdminDashboard({
               refreshProducts();
               void refreshPaidStats();
             }}
+            onPaymentUpdated={() => void refreshPaidStats()}
             onInvoiceDeleted={() => {
               void refreshPaidStats();
             }}
@@ -596,6 +626,18 @@ export function AdminDashboard({
 
       {activeView === "messages" && (
         <MessagesSection products={products.filter((p) => p.isActive && !isImportOnlyProduct(p))} />
+      )}
+
+      {activeView === "news" && (role === "admin" || role === "support") && (
+        <NewsManagementSection />
+      )}
+
+      {activeView === "hotelOffers" && (role === "admin" || role === "support") && (
+        <HotelOffersManagementSection />
+      )}
+
+      {activeView === "flightRequests" && (role === "admin" || role === "support") && (
+        <FlightRequestsManagementSection />
       )}
     </div>
 

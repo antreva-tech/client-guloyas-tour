@@ -137,6 +137,57 @@ model AdminSettings {
   @@map("admin_settings")
 }
 
+/// News/blog post for the public "Noticias" section. Admin creates/edits; public sees published only.
+model NewsPost {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  content     String    /// Body (plain text or markdown)
+  excerpt     String?
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([isPublished, publishedAt])
+  @@map("news_posts")
+}
+
+/// Hotel offer for the public "Ofertas de hoteles" section. Admin-managed.
+model HotelOffer {
+  id         String    @id @default(cuid())
+  title      String
+  description String
+  linkUrl    String
+  imageUrl   String?
+  validFrom  DateTime?
+  validUntil DateTime?
+  sequence   Int       @default(0)
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([isActive, sequence])
+  @@map("hotel_offers")
+}
+
+/// Flight reservation request from the public form. Stored for follow-up; no external booking API.
+model FlightRequest {
+  id                String   @id @default(cuid())
+  departureAirport  String
+  arrivalAirport    String
+  travelDate        DateTime
+  isRoundTrip       Boolean  @default(false)
+  customerName      String?
+  customerPhone     String?
+  customerEmail     String?
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("flight_requests")
+}
+
 /// WhatsApp message log for dashboard interactions and status tracking
 model WhatsAppMessageLog {
   id             String   @id @default(cuid())

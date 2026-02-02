@@ -23,6 +23,8 @@ export function Header() {
   const navLinks = [
     { href: "#productos", label: "Productos" },
     { href: "#nosotros", label: "Nosotros" },
+    { href: "/noticias", label: "Noticias" },
+    { href: "#reserva-vuelo", label: "Reserva de vuelo" },
     { href: "#reservar", label: "Cómo reservar" },
     { href: "#contacto", label: "Contacto" },
   ];
