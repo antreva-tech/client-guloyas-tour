@@ -23,15 +23,17 @@ export function SettingsForm({
   role = "admin",
 }: SettingsFormProps) {
   return (
-    <div className="space-y-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
       <PasswordChangeForm action={onChangePassword} role={role} />
-      <SellerManagementSection />
-      <UserManagementSection />
       <DashboardSettingsForm
         initialSettings={initialSettings}
         action={onUpdateSettings}
       />
-      <ExportImportSection />
+      <SellerManagementSection />
+      <UserManagementSection />
+      <div className="lg:col-span-2">
+        <ExportImportSection />
+      </div>
     </div>
   );
 }
@@ -195,10 +197,9 @@ function DashboardSettingsForm({
             htmlFor="lowStockThreshold"
             className="block text-sm font-medium text-jet/80 mb-1.5"
           >
-            Umbral de plazas bajas (por defecto)
-          </label>
+            Umbral de plazas bajo</label>
           <p className="text-jet/50 text-xs mb-2">
-            Los tours con plazas igual o menor a este número mostrarán &quot;¡Pocas plazas!&quot; en el sitio y en las alertas del panel.
+            Los tours con plazas igual o menor a este número mostrarán &quot;¡Plazas bajo!&quot; en el sitio y en las alertas del panel.
           </p>
           <input
             type="number"

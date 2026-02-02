@@ -225,10 +225,10 @@ export function ProductCard({
           </div>
         )}
 
-        {/* Low seats badge */}
+        {/* Low stock badge */}
         {isLowStock && (
           <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-brand-coral text-white text-[10px] sm:text-xs font-semibold px-2.5 sm:px-3 py-1 rounded-full animate-pulse">
-            ¡Pocas plazas!
+            ¡Stock bajo!
           </div>
         )}
       </div>
@@ -241,7 +241,7 @@ export function ProductCard({
           </span>
           {isLowStock && (
             <span className="text-brand-coral text-[10px] sm:text-xs font-medium">
-              • Solo {product.stock} plazas
+              • Solo {product.stock} disponibles
             </span>
           )}
         </div>

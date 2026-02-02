@@ -2,9 +2,17 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getApiSessionContext, requireSupervisorOrAbove } from "@/lib/apiAuth";
 
+/** Top tour by revenue and seats sold. */
+export interface TopTourStat {
+  tourId: string;
+  tourName: string;
+  revenue: number;
+  seatsSold: number;
+}
+
 /**
  * GET /api/sales/stats
- * Returns revenue and units from fully paid, non-voided invoices only.
+ * Returns revenue, units, and KPIs from sales/tours.
  * Admin/Support only; supervisor gets 403 (no Resumen access).
  */
 export async function GET() {
@@ -20,7 +28,17 @@ export async function GET() {
   }
 
   try {
-    const [paid, sales, provinciaSales] = await Promise.all([
+    const [
+      paid,
+      sales,
+      provinciaSales,
+      pendingAgg,
+      voidedBatches,
+      validBatches,
+      paidBatches,
+      tourCapacity,
+      salesByTour,
+    ] = await Promise.all([
       db.sale.aggregate({
         where: { isPaid: true, voidedAt: null },
         _sum: { total: true, quantity: true },
@@ -35,6 +53,38 @@ export async function GET() {
       db.sale.findMany({
         where: { voidedAt: null, provincia: { not: null } },
         select: { provincia: true, total: true },
+      }),
+      db.sale.aggregate({
+        where: {
+          voidedAt: null,
+          isPaid: false,
+          pendiente: { not: null },
+        },
+        _sum: { pendiente: true },
+      }),
+      db.sale.findMany({
+        where: { voidedAt: { not: null } },
+        select: { batchId: true },
+        distinct: ["batchId"],
+      }),
+      db.sale.findMany({
+        where: { voidedAt: null },
+        select: { batchId: true },
+        distinct: ["batchId"],
+      }),
+      db.sale.findMany({
+        where: { isPaid: true, voidedAt: null },
+        select: { batchId: true },
+        distinct: ["batchId"],
+      }),
+      db.tour.aggregate({
+        where: { isActive: true },
+        _sum: { stock: true, sold: true },
+      }),
+      db.sale.groupBy({
+        by: ["tourId"],
+        where: { voidedAt: null },
+        _sum: { total: true, quantity: true },
       }),
     ]);
 
@@ -72,11 +122,50 @@ export async function GET() {
       .map(([provincia, total]) => ({ provincia, total }))
       .sort((a, b) => b.total - a.total);
 
+    const pendingRevenue = pendingAgg._sum.pendiente ?? 0;
+    const voidedInvoiceCount = voidedBatches.length;
+    const validInvoiceCount = validBatches.length;
+    const paidInvoiceCount = paidBatches.length;
+    const totalInvoices = voidedInvoiceCount + validInvoiceCount;
+    const voidRate =
+      totalInvoices > 0 ? (voidedInvoiceCount / totalInvoices) * 100 : 0;
+
+    const totalCapacity = tourCapacity._sum.stock ?? 0;
+    const totalSold = tourCapacity._sum.sold ?? 0;
+    const occupancyPercent =
+      totalCapacity > 0 ? (totalSold / totalCapacity) * 100 : undefined;
+
+    const tourIds = salesByTour.map((g) => g.tourId);
+    const tours =
+      tourIds.length > 0
+        ? await db.tour.findMany({
+            where: { id: { in: tourIds } },
+            select: { id: true, name: true },
+          })
+        : [];
+    const tourNameMap = new Map(tours.map((t) => [t.id, t.name]));
+
+    const topTours: TopTourStat[] = salesByTour
+      .map((g) => ({
+        tourId: g.tourId,
+        tourName: tourNameMap.get(g.tourId) ?? "—",
+        revenue: g._sum.total ?? 0,
+        seatsSold: g._sum.quantity ?? 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
     return NextResponse.json({
       paidRevenue: paid._sum.total ?? 0,
       paidUnits: paid._sum.quantity ?? 0,
       topSellers,
       provinciaStats,
+      pendingRevenue,
+      voidedInvoiceCount,
+      paidInvoiceCount,
+      occupancyPercent: occupancyPercent ?? null,
+      topTours,
+      voidRate,
     });
   } catch (error) {
     console.error("Sales stats error:", error);

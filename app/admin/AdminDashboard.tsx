@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { brandConfig } from "@/lib/brandConfig";
 import type { Product } from "@/lib/products";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
@@ -102,7 +104,23 @@ export function AdminDashboard({
     paidRevenue: number;
     paidUnits: number;
     topSellers: Array<{ nombreVendedor: string; totalRevenue: number; invoiceCount: number }>;
-  }>({ paidRevenue: 0, paidUnits: 0, topSellers: [] });
+    pendingRevenue: number;
+    voidedInvoiceCount: number;
+    paidInvoiceCount: number;
+    occupancyPercent: number | null;
+    topTours: Array<{ tourId: string; tourName: string; revenue: number; seatsSold: number }>;
+    voidRate: number;
+  }>({
+    paidRevenue: 0,
+    paidUnits: 0,
+    topSellers: [],
+    pendingRevenue: 0,
+    voidedInvoiceCount: 0,
+    paidInvoiceCount: 0,
+    occupancyPercent: null,
+    topTours: [],
+    voidRate: 0,
+  });
   const [invoiceListRefreshKey, setInvoiceListRefreshKey] = useState(0);
   const [confirmModal, setConfirmModal] = useState<{
     title: string;
@@ -123,6 +141,12 @@ export function AdminDashboard({
         paidRevenue: data.paidRevenue ?? 0,
         paidUnits: data.paidUnits ?? 0,
         topSellers: data.topSellers ?? [],
+        pendingRevenue: data.pendingRevenue ?? 0,
+        voidedInvoiceCount: data.voidedInvoiceCount ?? 0,
+        paidInvoiceCount: data.paidInvoiceCount ?? 0,
+        occupancyPercent: data.occupancyPercent ?? null,
+        topTours: data.topTours ?? [],
+        voidRate: data.voidRate ?? 0,
       });
     }
   }
@@ -310,6 +334,89 @@ export function AdminDashboard({
         <div className="grid gap-3 tablet:gap-4 grid-cols-2 sm:grid-cols-3">
           <StatCard label="Tours Activos" value={activeProducts} />
           <StatCard label="Plazas vendidas" value={totalSold} />
+          <StatCard
+            label="Cobro pendiente"
+            value={paidStats.pendingRevenue}
+            valueDisplay={`RD$ ${paidStats.pendingRevenue.toLocaleString()}`}
+          />
+        </div>
+
+        {/* Second row: AOV, Occupancy, Void rate */}
+        <div className="grid gap-3 tablet:gap-4 grid-cols-2 sm:grid-cols-3">
+          <StatCard
+            label="Ticket promedio (por plaza)"
+            value={paidStats.paidUnits}
+            valueDisplay={
+              paidStats.paidUnits > 0
+                ? `RD$ ${Math.round(paidStats.paidRevenue / paidStats.paidUnits).toLocaleString()}`
+                : "—"
+            }
+          />
+          <StatCard
+            label="Ocupación"
+            value={paidStats.occupancyPercent ?? 0}
+            valueDisplay={
+              paidStats.occupancyPercent != null
+                ? `${paidStats.occupancyPercent.toFixed(1)}%`
+                : "N/A"
+            }
+          />
+          <StatCard
+            label="Tasa de anulación"
+            value={paidStats.voidRate}
+            valueDisplay={`${paidStats.voidRate.toFixed(1)}%`}
+            warning={paidStats.voidRate > 5}
+          />
+        </div>
+
+        {/* Top sellers + Top tours */}
+        <div className="grid gap-4 tablet:gap-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="bg-porcelain rounded-xl border border-gold-200/50 p-4">
+              <h3 className="text-sm font-semibold text-jet mb-3">Top vendedores</h3>
+              {paidStats.topSellers.length === 0 ? (
+                <p className="text-jet/50 text-sm">Sin datos</p>
+              ) : (
+                <div className="space-y-2">
+                  {paidStats.topSellers.slice(0, 5).map((s, i) => (
+                    <div
+                      key={s.nombreVendedor}
+                      className="flex justify-between items-center text-sm"
+                    >
+                      <span className="text-jet truncate">
+                        {i + 1}. {s.nombreVendedor}
+                      </span>
+                      <span className="text-jet font-medium shrink-0 ml-2">
+                        RD$ {s.totalRevenue.toLocaleString()} ({s.invoiceCount})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="bg-porcelain rounded-xl border border-gold-200/50 p-4">
+              <h3 className="text-sm font-semibold text-jet mb-3">Tours más vendidos</h3>
+              {paidStats.topTours.length === 0 ? (
+                <p className="text-jet/50 text-sm">Sin datos</p>
+              ) : (
+                <div className="space-y-2">
+                  {paidStats.topTours.slice(0, 5).map((t, i) => (
+                    <div
+                      key={t.tourId}
+                      className="flex justify-between items-center text-sm"
+                    >
+                      <span className="text-jet truncate">
+                        {i + 1}. {t.tourName}
+                      </span>
+                      <span className="text-jet font-medium shrink-0 ml-2">
+                        RD$ {t.revenue.toLocaleString()} ({t.seatsSold} plz.)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <InvoiceHistoryPanel
@@ -701,12 +808,15 @@ function MessagesSection({ products }: { products: Product[] }) {
 function StatCard({
   label,
   value,
+  valueDisplay,
   secondary = false,
   warning = false,
   danger = false,
 }: {
   label: string;
   value: number;
+  /** Override numeric display (e.g. RD$ 1,234 or 75%). */
+  valueDisplay?: React.ReactNode;
   secondary?: boolean;
   warning?: boolean;
   danger?: boolean;
@@ -724,11 +834,13 @@ function StatCard({
     return "text-jet";
   };
 
+  const display = valueDisplay != null ? valueDisplay : value;
+
   return (
     <div className={`p-3 md:p-4 rounded-xl border shadow-sm ${getBgClass()}`}>
       <p className="text-jet/60 text-xs md:text-sm truncate">{label}</p>
       <p className={`text-xl md:text-2xl font-bold mt-1 ${getValueClass()}`}>
-        {value}
+        {display}
       </p>
     </div>
   );
@@ -847,6 +959,7 @@ function ProductForm({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [tourDateYyyyMmDd, setTourDateYyyyMmDd] = useState("");
 
   /**
    * Uploads a single file and appends its URL to imageUrls.
@@ -899,8 +1012,7 @@ function ProductForm({
     const childPrice = childPriceRaw === "" ? null : Math.max(0, parseInt(childPriceRaw, 10) || 0);
     const lowSeatsRaw = (formData.get("lowSeatsThreshold") as string)?.trim() ?? "";
     const lowSeatsThreshold = lowSeatsRaw === "" ? null : Math.max(0, parseInt(lowSeatsRaw, 10) || 0);
-    const tourDateRaw = (formData.get("tourDate") as string)?.trim() ?? "";
-    const tourDate = tourDateRaw === "" ? undefined : tourDateRaw;
+    const tourDate = tourDateYyyyMmDd.trim() || undefined;
     const data = {
       name: formData.get("name") as string,
       line: "Tour",
@@ -957,10 +1069,23 @@ function ProductForm({
         />
         <div>
           <label htmlFor="create-tourDate" className="block text-sm font-medium text-jet/80 mb-1">Fecha</label>
-          <input
+          <input type="hidden" name="tourDate" value={tourDateYyyyMmDd} />
+          <DatePicker
             id="create-tourDate"
-            name="tourDate"
-            type="date"
+            selected={tourDateYyyyMmDd ? new Date(tourDateYyyyMmDd + "T12:00:00") : null}
+            onChange={(date: Date | null) => {
+              if (!date) {
+                setTourDateYyyyMmDd("");
+                return;
+              }
+              const y = date.getFullYear();
+              const m = String(date.getMonth() + 1).padStart(2, "0");
+              const d = String(date.getDate()).padStart(2, "0");
+              setTourDateYyyyMmDd(`${y}-${m}-${d}`);
+            }}
+            dateFormat="dd/MM/yyyy"
+            placeholderText="DD/MM/YYYY"
+            isClearable
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
         </div>
@@ -1077,6 +1202,12 @@ function EditProductForm({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>(initialImageUrls);
+  const initialTourDate = (() => {
+    const td = (product as Product & { tourDate?: Date | string | null }).tourDate;
+    if (!td) return "";
+    return typeof td === "string" ? td.slice(0, 10) : new Date(td).toISOString().slice(0, 10);
+  })();
+  const [tourDateYyyyMmDd, setTourDateYyyyMmDd] = useState(initialTourDate);
 
   /**
    * Uploads selected files and appends URLs to imageUrls.
@@ -1125,8 +1256,7 @@ function EditProductForm({
     const childPrice = childPriceRaw === "" ? null : Math.max(0, parseInt(childPriceRaw, 10) || 0);
     const lowSeatsRaw = (formData.get("lowSeatsThreshold") as string)?.trim() ?? "";
     const lowSeatsThreshold = lowSeatsRaw === "" ? null : Math.max(0, parseInt(lowSeatsRaw, 10) || 0);
-    const tourDateRaw = (formData.get("tourDate") as string)?.trim() ?? "";
-    const tourDate = tourDateRaw === "" ? null : tourDateRaw;
+    const tourDate = tourDateYyyyMmDd.trim() || null;
     const productExt = product as Product & { sequence?: number };
     const data = {
       name: formData.get("name") as string,
@@ -1182,15 +1312,23 @@ function EditProductForm({
         <FormField label="Descripción" name="description" defaultValue={product.description} required className="mobile-landscape:col-span-2 tablet:col-span-2" />
         <div>
           <label htmlFor="edit-tourDate" className="block text-sm font-medium text-jet/80 mb-1">Fecha</label>
-          <input
+          <input type="hidden" name="tourDate" value={tourDateYyyyMmDd} />
+          <DatePicker
             id="edit-tourDate"
-            name="tourDate"
-            type="date"
-            defaultValue={(() => {
-              const tourDate = (product as Product & { tourDate?: Date | string | null }).tourDate;
-              if (!tourDate) return "";
-              return typeof tourDate === "string" ? tourDate.slice(0, 10) : new Date(tourDate).toISOString().slice(0, 10);
-            })()}
+            selected={tourDateYyyyMmDd ? new Date(tourDateYyyyMmDd + "T12:00:00") : null}
+            onChange={(date: Date | null) => {
+              if (!date) {
+                setTourDateYyyyMmDd("");
+                return;
+              }
+              const y = date.getFullYear();
+              const m = String(date.getMonth() + 1).padStart(2, "0");
+              const d = String(date.getDate()).padStart(2, "0");
+              setTourDateYyyyMmDd(`${y}-${m}-${d}`);
+            }}
+            dateFormat="dd/MM/yyyy"
+            placeholderText="DD/MM/YYYY"
+            isClearable
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
         </div>

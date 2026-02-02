@@ -119,7 +119,7 @@ export default async function AdminSettingsPage() {
       </header>
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         <SettingsForm
           initialSettings={settings}
           onChangePassword={handleChangePassword}
