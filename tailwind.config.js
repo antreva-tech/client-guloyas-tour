@@ -1,73 +1,72 @@
-// tailwind.config.js (or tailwind.config.ts)
-// Luxury Salon Hair Care — color system based on: #000000, #FEFEFE, #08D5FA
+// tailwind.config.js — Guloyas Tours color system per docs/color-brand.md
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-    content: [
-      "./app/**/*.{js,ts,jsx,tsx,mdx}",
-      "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-      "./components/**/*.{js,ts,jsx,tsx,mdx}",
-      "./src/**/*.{js,ts,jsx,tsx,mdx}",
-    ],
-    theme: {
-      screens: {
-        // Mobile first breakpoints
-        'sm': '640px',       // Mobile landscape / large phones
-        'md': '768px',       // iPad portrait / small tablets
-        'lg': '1024px',      // iPad landscape / desktop
-        'xl': '1280px',      // Large desktop
-        '2xl': '1536px',     // Extra large screens
-        // Tablet-specific breakpoints
-        'tablet': '768px',         // iPad Mini/standard portrait
-        'tablet-lg': '1024px',     // iPad landscape / iPad Pro portrait
-        // Orientation variants (using raw media queries)
-        'portrait': { 'raw': '(orientation: portrait)' },
-        'landscape': { 'raw': '(orientation: landscape)' },
-        // Combined tablet + orientation (for precise targeting)
-        'tablet-portrait': { 'raw': '(min-width: 768px) and (orientation: portrait)' },
-        'tablet-landscape': { 'raw': '(min-width: 768px) and (orientation: landscape)' },
-        'mobile-landscape': { 'raw': '(max-width: 767px) and (orientation: landscape)' },
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    screens: {
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+      tablet: "768px",
+      "tablet-lg": "1024px",
+      portrait: { raw: "(orientation: portrait)" },
+      landscape: { raw: "(orientation: landscape)" },
+      "tablet-portrait": { raw: "(min-width: 768px) and (orientation: portrait)" },
+      "tablet-landscape": { raw: "(min-width: 768px) and (orientation: landscape)" },
+      "mobile-landscape": { raw: "(max-width: 767px) and (orientation: landscape)" },
+    },
+    extend: {
+      colors: {
+        brand: {
+          navy: "#19173b",
+          sunset: "#f49724",
+          gold: "#f8cf1c",
+          coral: "#fa484d",
+          magenta: "#e31b81",
+          sky: "#579afd",
+          violet: "#5a58a2",
+          sand: "#feeb9b",
+          ink: "#0b0a1b",
+          canvas: "#f7f8fb",
+          border: "#e6e8f0",
+          muted: "#2a2950",
+        },
+        // Night scale for dark surfaces (color-brand §4)
+        night: {
+          900: "#0b0a19",
+          800: "#121032",
+          700: "#19173b",
+          600: "#272454",
+          border: "#34326a",
+          text: "#f3f4ff",
+          muted: "#c7c9ff",
+        },
+        // Semantic (color-brand §6)
+        success: "#16a34a",
+        warning: "#f59e0b",
+        danger: "#dc2626",
+        info: "#2563eb",
       },
-      extend: {
-        colors: {
-          // Core (provided)
-          jet: "#000000",
-          porcelain: "#FEFEFE",
-          aqua: {
-            500: "#08D5FA", // Aqua Shine (primary accent / CTA / focus)
-            700: "#007C92", // Aqua Deep (links/text on light)
-            50: "#D6F8FF",  // Aqua Fog (tints)
-          },
-  
-          // Luxury neutrals
-          onyx: "#0B0F14",       // main dark background (preferred over pure black)
-          graphite: "#141A22",   // surfaces/cards on dark
-          smoke: "#2A3441",      // borders/dividers on dark
-          pearl: "#F6F3EE",      // soft light background sections
-  
-          // Metallic accents (premium cues)
-          gold: {
-            200: "#D8C3A5", // Champagne Gold
-            500: "#C8A96A", // Soft Gold
-          },
-  
-          // Optional semantic
-          success: "#1F8A70",
-          danger: "#B42318",
-        },
-  
-        // Optional: box shadows for subtle luxe glow (no neon blobs)
-        boxShadow: {
-          "aqua-glow": "0 0 0 3px rgba(8, 213, 250, 0.18)",
-          "soft-lift": "0 10px 30px rgba(0, 0, 0, 0.35)",
-        },
-  
-        // Optional: gradients
-        backgroundImage: {
-          "lux-dark": "linear-gradient(180deg, #0B0F14 0%, #141A22 100%)",
-        },
+      backgroundImage: {
+        "brand-sunset":
+          "linear-gradient(90deg, #f8cf1c 0%, #f49724 35%, #fa484d 70%, #e31b81 100%)",
+        "brand-nightfall":
+          "linear-gradient(180deg, #19173b 0%, #272454 60%, #5a58a2 100%)",
+        "brand-skyline": "linear-gradient(90deg, #5a58a2 0%, #579afd 100%)",
+      },
+      boxShadow: {
+        "brand-focus": "0 0 0 3px rgba(87, 154, 253, 0.35)",
+        "soft-lift": "0 10px 30px rgba(0, 0, 0, 0.15)",
       },
     },
-    plugins: [],
-  };
-  
+  },
+  plugins: [],
+};

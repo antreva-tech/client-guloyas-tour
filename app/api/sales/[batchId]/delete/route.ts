@@ -41,13 +41,8 @@ export async function DELETE(
       );
     }
 
-    await db.$transaction(async (tx) => {
-      await tx.invoiceContactTracking.deleteMany({
-        where: { batchId },
-      });
-      await tx.sale.deleteMany({
-        where: { batchId },
-      });
+    await db.sale.deleteMany({
+      where: { batchId },
     });
 
     return NextResponse.json({

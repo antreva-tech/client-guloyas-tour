@@ -23,7 +23,7 @@ interface ProductForSchema {
  */
 interface SeoStructuredDataProps {
   baseUrl?: string;
-  /** Catalog products for ItemList + Product schema (kits + individuals). */
+  /** Catalog tours/experiences for ItemList + Product schema. */
   products?: ProductForSchema[];
 }
 
@@ -76,7 +76,7 @@ export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataP
     name: brandConfig.brandName,
     url: siteUrl,
     logo: logoUrl,
-    description: `${brandConfig.tagline}. Premium products.`,
+    description: `${brandConfig.tagline}. Tours y experiencias.`,
     ...(brandConfig.foundedYear && { foundingDate: brandConfig.foundedYear }),
     ...(addressSchema && { address: addressSchema }),
     ...(contactPoint.length > 0 && { contactPoint }),
@@ -88,7 +88,7 @@ export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataP
     "@type": "WebSite",
     name: brandConfig.brandName,
     url: siteUrl,
-    description: `${brandConfig.tagline}. Premium products.`,
+    description: `${brandConfig.tagline}. Tours y experiencias.`,
     inLanguage: "es-DO",
     publisher: { "@type": "Organization" as const, name: brandConfig.brandName },
   };
@@ -115,7 +115,7 @@ export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataP
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Inicio", item: siteUrl },
-      { "@type": "ListItem", position: 2, name: "Catálogo", item: `${siteUrl}/#productos` },
+      { "@type": "ListItem", position: 2, name: "Tours", item: `${siteUrl}/#tours` },
     ],
   };
 
@@ -130,7 +130,7 @@ export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataP
     return {
       "@context": "https://schema.org",
       "@type": "Product",
-      "@id": `${siteUrl}/#product-${p.id}`,
+      "@id": `${siteUrl}/#tour-${p.id}`,
       sku: p.id,
       name: p.name,
       description: p.description,
@@ -155,7 +155,7 @@ export function SeoStructuredData({ baseUrl, products = [] }: SeoStructuredDataP
             "@type": "ListItem",
             position: i + 1,
             item: {
-              "@id": `${siteUrl}/#product-${p.id}`,
+              "@id": `${siteUrl}/#tour-${p.id}`,
               name: p.name,
             },
           })),

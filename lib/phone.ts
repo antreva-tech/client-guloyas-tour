@@ -41,3 +41,32 @@ export function formatPhoneForWhatsApp(phone: string): string {
 export function formatPhoneForTel(phone: string): string {
   return toDigits(phone);
 }
+
+/**
+ * Formats a phone number for display (e.g. in footer, contact section).
+ * +1 NANP (e.g. DR 829): "18297188926" → "+1 829-718-8926".
+ * 10-digit DR: "8297188926" → "829-718-8926".
+ * @param phone - Raw phone string (may include +1, spaces, dashes).
+ * @returns Human-readable display string.
+ */
+export function formatPhoneForDisplay(phone: string): string {
+  const digits = toDigits(phone);
+  if (digits.length === 0) return "";
+  // +1 NANP: 11 digits starting with 1 → +1 XXX-XXX-XXXX
+  if (digits.length >= 11 && digits.startsWith("1")) {
+    const rest = digits.slice(1);
+    if (rest.length >= 10) {
+      return `+1 ${rest.slice(0, 3)}-${rest.slice(3, 6)}-${rest.slice(6, 10)}`;
+    }
+  }
+  // 10-digit (e.g. DR without country code) → XXX-XXX-XXXX
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  }
+  // Fallback: group last 10 digits if possible
+  if (digits.length >= 10) {
+    const last10 = digits.slice(-10);
+    return `${last10.slice(0, 3)}-${last10.slice(3, 6)}-${last10.slice(6, 10)}`;
+  }
+  return phone;
+}

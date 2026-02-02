@@ -15,9 +15,9 @@ export interface ProductDTO {
   stock?: number;
   sold?: number;
   isActive?: boolean;
-  isKit?: boolean;
-  isIndividual?: boolean;
   sequence?: number;
+  /** Per-tour low-seats threshold (null = use default or hide badge). */
+  lowSeatsThreshold?: number | null;
 }
 
 /**
@@ -51,7 +51,7 @@ const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
 /** Placeholder product used only for CSV import; excluded from catalog and sales. */
-export const IMPORT_ONLY_PRODUCT_NAME = "Kit de Productos";
+export const IMPORT_ONLY_PRODUCT_NAME = "Importación de Reservas";
 
 /**
  * Returns true if the product is the import-only placeholder (case-insensitive).
@@ -64,33 +64,9 @@ export function isImportOnlyProduct(product: { name: string }): boolean {
 const excludeImportOnly = { name: { not: IMPORT_ONLY_PRODUCT_NAME } };
 
 /**
- * Retrieves all active kit products for the main catalog.
- * Only returns products marked as kits; excludes import-only placeholder.
- * @returns Array of active kit products sorted by creation date.
- */
-export async function getActiveKits(): Promise<Product[]> {
-  return db.product.findMany({
-    where: { isActive: true, isKit: true, ...excludeImportOnly },
-    orderBy: [{ sequence: "asc" }, { createdAt: "desc" }],
-  });
-}
-
-/**
- * Retrieves all active individual products for the main catalog.
- * Only returns products marked as individual; excludes import-only placeholder.
- * @returns Array of active individual products sorted by creation date.
- */
-export async function getActiveIndividuals(): Promise<Product[]> {
-  return db.product.findMany({
-    where: { isActive: true, isIndividual: true, ...excludeImportOnly },
-    orderBy: [{ sequence: "asc" }, { createdAt: "desc" }],
-  });
-}
-
-/**
- * Retrieves all active products from the database.
- * Includes both kits and individual products; excludes import-only placeholder.
- * @returns Array of active products sorted by creation date.
+ * Retrieves all active tours from the database.
+ * Excludes import-only placeholder. Catalog uses this single list.
+ * @returns Array of active products (tours) sorted by sequence and creation date.
  */
 export async function getActiveProducts(): Promise<Product[]> {
   return db.product.findMany({
@@ -210,9 +186,8 @@ export async function createProduct(data: ProductDTO): Promise<Product> {
       imageUrl: data.imageUrl,
       stock: data.stock ?? 0,
       isActive: data.isActive ?? true,
-      isKit: data.isKit ?? false,
-      isIndividual: data.isIndividual ?? false,
       sequence: data.sequence ?? 0,
+      lowSeatsThreshold: data.lowSeatsThreshold ?? undefined,
     },
   });
 }

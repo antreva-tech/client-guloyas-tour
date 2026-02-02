@@ -11,6 +11,7 @@ import { getProvincias } from "@/lib/locationData";
 import { IMPORT_ONLY_PRODUCT_NAME, isImportOnlyProduct } from "@/lib/products";
 import { UNLIMITED_STOCK } from "@/lib/validation";
 import { formatDateTime } from "@/lib/formatDate";
+import { formatPhoneForDisplay } from "@/lib/phone";
 import { canSeeResumen, canSeeProducts, canDeleteVoidedInvoices, showSupervisorFilter } from "@/lib/permissions";
 import type { SessionRole } from "@/lib/permissions";
 
@@ -69,7 +70,7 @@ interface CompletedSale {
   date: string;
 }
 
-type AdminView = "overview" | "products" | "sales";
+type AdminView = "overview" | "products" | "sales" | "messages";
 
 export function AdminDashboard({
   initialProducts,
@@ -198,7 +199,12 @@ export function AdminDashboard({
   const totalSold = products.reduce((sum, p) => sum + p.sold, 0);
   const activeProducts = products.filter((p) => p.isActive).length;
   const totalRevenue = products.reduce((sum, p) => sum + (p.price * p.sold), 0);
-  const lowStockProducts = products.filter((p) => p.stock > 0 && p.stock <= lowStockThreshold);
+  const lowStockProducts = products.filter((p) => {
+    if (p.stock <= 0) return false;
+    const threshold = (p as { lowSeatsThreshold?: number | null }).lowSeatsThreshold;
+    const effective = threshold != null ? threshold : lowStockThreshold;
+    return p.stock <= effective;
+  });
   const outOfStockProducts = products.filter((p) => p.stock === 0 && p.isActive);
   const usesInventory = products.some((p) => p.stock >= 0);
   
@@ -281,7 +287,7 @@ export function AdminDashboard({
               onClick={() => setActiveView("products")}
               className={`${getViewButtonClass("products")} whitespace-nowrap flex-shrink-0`}
             >
-              Productos
+              Tours
             </button>
           )}
           <button
@@ -289,7 +295,14 @@ export function AdminDashboard({
             onClick={() => setActiveView("sales")}
             className={`${getViewButtonClass("sales")} whitespace-nowrap flex-shrink-0`}
           >
-            Ventas
+            Reservas
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("messages")}
+            className={`${getViewButtonClass("messages")} whitespace-nowrap flex-shrink-0`}
+          >
+            Mensajes
           </button>
         </div>
       </div>
@@ -314,15 +327,15 @@ export function AdminDashboard({
               </div>
             </div>
             <div className="grid gap-3 tablet:gap-4 grid-cols-2 mobile-landscape:grid-cols-4 tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-4">
-              <StatCard label="Productos Activos" value={activeProducts} />
-              <StatCard label="En Inventario" value={totalStock} />
+              <StatCard label="Tours Activos" value={activeProducts} />
+              <StatCard label="Plazas" value={totalStock} />
               <StatCard
-                label="Stock Bajo"
+                label="Plazas bajas"
                 value={lowStockProducts.length}
                 warning={lowStockProducts.length > 0}
               />
               <StatCard
-                label="Sin Stock"
+                label="Sin plazas"
                 value={outOfStockProducts.length}
                 danger={outOfStockProducts.length > 0}
               />
@@ -391,18 +404,18 @@ export function AdminDashboard({
           
           {usesInventory && (lowStockProducts.length > 0 || outOfStockProducts.length > 0) && (
             <div className="bg-porcelain rounded-xl border border-gold-200/50 p-4">
-              <p className="text-jet/60 text-xs uppercase tracking-wider mb-2">Alertas de Inventario</p>
+              <p className="text-jet/60 text-xs uppercase tracking-wider mb-2">Alertas de plazas</p>
               <div className="space-y-2">
                 {outOfStockProducts.slice(0, 2).map((p) => (
                   <div key={p.id} className="flex items-center justify-between text-sm">
                     <span className="text-jet truncate">{p.name} - {p.line}</span>
-                    <span className="text-danger font-medium shrink-0 ml-2">Sin stock</span>
+                    <span className="text-danger font-medium shrink-0 ml-2">Sin plazas</span>
                   </div>
                 ))}
                 {lowStockProducts.slice(0, 2).map((p) => (
                   <div key={p.id} className="flex items-center justify-between text-sm">
                     <span className="text-jet truncate">{p.name} - {p.line}</span>
-                    <span className="text-gold-500 font-medium shrink-0 ml-2">{p.stock} unidades</span>
+                    <span className="text-gold-500 font-medium shrink-0 ml-2">{p.stock} plazas</span>
                   </div>
                 ))}
               </div>
@@ -461,7 +474,7 @@ export function AdminDashboard({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-4 border-b border-gold-200/50 flex items-center justify-between flex-shrink-0">
-                  <h3 className="text-lg font-semibold text-jet">Editar Producto</h3>
+                  <h3 className="text-lg font-semibold text-jet">Editar Tour</h3>
                   <button
                     type="button"
                     onClick={() => setEditingProduct(null)}
@@ -497,7 +510,7 @@ export function AdminDashboard({
             ))}
             {products.length === 0 && (
               <div className="bg-porcelain rounded-xl border border-gold-200/50 p-6 text-center text-jet/50 col-span-full">
-                No hay productos. Crea uno nuevo para comenzar.
+                No hay tours. Crea uno nuevo para comenzar.
               </div>
             )}
           </div>
@@ -508,7 +521,7 @@ export function AdminDashboard({
         <>
           <div className="flex flex-col landscape:flex-row landscape:justify-between landscape:items-center tablet:flex-row tablet:justify-between tablet:items-center gap-3">
             <h2 className="text-lg tablet:text-xl font-semibold text-jet">
-              Gestión de Ventas
+              Gestión de Reservas
             </h2>
             <div className="flex gap-2 w-full landscape:w-auto tablet:w-auto">
               <button
@@ -581,6 +594,10 @@ export function AdminDashboard({
           )}
         </>
       )}
+
+      {activeView === "messages" && (
+        <MessagesSection products={products.filter((p) => p.isActive && !isImportOnlyProduct(p))} />
+      )}
     </div>
 
     {confirmModal && (
@@ -595,6 +612,195 @@ export function AdminDashboard({
       />
     )}
     </>
+  );
+}
+
+/** WhatsApp message log entry for display. */
+interface WhatsAppLogEntry {
+  id: string;
+  direction: string;
+  customerPhone: string;
+  body: string | null;
+  status: string;
+  createdAt: string;
+  batchId: string | null;
+  productId: string | null;
+}
+
+/**
+ * Messages (WhatsApp) section: single send, mass send to tour, and message interactions list.
+ * Requires WhatsApp Cloud API env (WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN).
+ */
+function MessagesSection({ products }: { products: Product[] }) {
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [productId, setProductId] = useState("");
+  const [singleLoading, setSingleLoading] = useState(false);
+  const [tourLoading, setTourLoading] = useState(false);
+  const [singleResult, setSingleResult] = useState<string | null>(null);
+  const [tourResult, setTourResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [interactions, setInteractions] = useState<WhatsAppLogEntry[]>([]);
+  const [interactionsLoading, setInteractionsLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setInteractionsLoading(true);
+    fetch("/api/whatsapp/messages?limit=50")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: WhatsAppLogEntry[]) => {
+        if (!cancelled) setInteractions(data);
+      })
+      .catch(() => { if (!cancelled) setInteractions([]); })
+      .finally(() => { if (!cancelled) setInteractionsLoading(false); });
+    return () => { cancelled = true; };
+  }, [singleResult, tourResult]);
+
+  async function handleSendSingle() {
+    if (!phone.trim() || !message.trim()) return;
+    setError(null);
+    setSingleResult(null);
+    setSingleLoading(true);
+    try {
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: phone.trim(), message: message.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al enviar");
+      setSingleResult("Enviado.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al enviar");
+    } finally {
+      setSingleLoading(false);
+    }
+  }
+
+  async function handleSendTour() {
+    if (!productId || !message.trim()) return;
+    setError(null);
+    setTourResult(null);
+    setTourLoading(true);
+    try {
+      const res = await fetch("/api/whatsapp/send-tour", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, message: message.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al enviar");
+      setTourResult({ sent: data.sent ?? 0, failed: data.failed ?? 0, total: data.total ?? 0 });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al enviar");
+    } finally {
+      setTourLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg tablet:text-xl font-semibold text-jet">Mensajes (WhatsApp)</h2>
+      {error && (
+        <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+      <div className="grid gap-6 tablet:grid-cols-2">
+        <div className="bg-porcelain rounded-xl border border-gold-200/50 p-4">
+          <h3 className="text-sm font-semibold text-jet mb-3">Enviar a un número</h3>
+          <input
+            type="text"
+            placeholder="Teléfono (ej. 18297188926)"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-aqua-500"
+          />
+          <textarea
+            placeholder="Mensaje"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={3}
+            className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-aqua-500"
+          />
+          <button
+            type="button"
+            onClick={handleSendSingle}
+            disabled={singleLoading}
+            className="bg-aqua-700 hover:bg-aqua-700/90 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+          >
+            {singleLoading ? "Enviando..." : "Enviar"}
+          </button>
+          {singleResult && <p className="text-success text-sm mt-2">{singleResult}</p>}
+        </div>
+        <div className="bg-porcelain rounded-xl border border-gold-200/50 p-4">
+          <h3 className="text-sm font-semibold text-jet mb-3">Enviar a participantes de un tour</h3>
+          <select
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-aqua-500"
+          >
+            <option value="">Seleccionar tour</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <textarea
+            placeholder="Mensaje (mismo para todos)"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={3}
+            className="w-full bg-white border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-aqua-500"
+          />
+          <button
+            type="button"
+            onClick={handleSendTour}
+            disabled={tourLoading || !productId}
+            className="bg-aqua-700 hover:bg-aqua-700/90 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+          >
+            {tourLoading ? "Enviando..." : "Enviar a participantes"}
+          </button>
+          {tourResult && (
+            <p className="text-jet/80 text-sm mt-2">
+              Enviados: {tourResult.sent}, fallidos: {tourResult.failed}, total: {tourResult.total}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="bg-porcelain rounded-xl border border-gold-200/50 p-4 mt-6">
+        <h3 className="text-sm font-semibold text-jet mb-3">Interacciones (mensajes recientes)</h3>
+        {interactionsLoading ? (
+          <p className="text-jet/50 text-sm">Cargando...</p>
+        ) : interactions.length === 0 ? (
+          <p className="text-jet/50 text-sm">No hay mensajes registrados.</p>
+        ) : (
+          <div className="overflow-x-auto max-h-64 overflow-y-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-jet/60 border-b border-gold-200/50">
+                <tr>
+                  <th className="py-2 pr-2">Fecha</th>
+                  <th className="py-2 pr-2">Teléfono</th>
+                  <th className="py-2 pr-2">Dirección</th>
+                  <th className="py-2 pr-2">Estado</th>
+                  <th className="py-2">Mensaje</th>
+                </tr>
+              </thead>
+              <tbody>
+                {interactions.map((row) => (
+                  <tr key={row.id} className="border-b border-gold-200/30">
+                    <td className="py-1.5 pr-2 text-jet/80">{new Date(row.createdAt).toLocaleString("es")}</td>
+                    <td className="py-1.5 pr-2">{row.customerPhone}</td>
+                    <td className="py-1.5 pr-2">{row.direction === "inbound" ? "Entrante" : "Saliente"}</td>
+                    <td className="py-1.5 pr-2">{row.status}</td>
+                    <td className="py-1.5 truncate max-w-[200px]">{row.body ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -693,7 +899,7 @@ function ProductCard({
         </button>
       </div>
 
-      {/* Stats row: Precio, Stock (if tracked), Oferta (if set), Vendido */}
+      {/* Stats row: Precio, Plazas (if tracked), Oferta (if set), Reservas */}
       <div className="grid grid-cols-2 gap-1.5 mb-4 tablet-landscape:mb-2 tablet-landscape:gap-1 tablet-landscape:grid-cols-2">
         <div className="bg-pearl rounded-lg p-2.5 text-center tablet-landscape:p-1.5">
           <p className="text-jet/50 text-xs tablet-landscape:text-[10px]">Precio</p>
@@ -703,7 +909,7 @@ function ProductCard({
         </div>
         {showStock && (
           <div className="bg-pearl rounded-lg p-2.5 text-center tablet-landscape:p-1.5">
-            <p className="text-jet/50 text-xs tablet-landscape:text-[10px]">Stock</p>
+            <p className="text-jet/50 text-xs tablet-landscape:text-[10px]">Plazas</p>
             <p className={`font-medium text-sm tablet-landscape:text-xs ${product.stock === 0 ? "text-danger" : "text-jet"}`}>
               {product.stock}
             </p>
@@ -718,7 +924,7 @@ function ProductCard({
           </div>
         )}
         <div className="bg-pearl rounded-lg p-2.5 text-center tablet-landscape:p-1.5">
-          <p className="text-jet/50 text-xs tablet-landscape:text-[10px]">Vendido</p>
+          <p className="text-jet/50 text-xs tablet-landscape:text-[10px]">Reservas</p>
           <p className="text-gold-500 font-medium text-sm tablet-landscape:text-xs">{product.sold}</p>
         </div>
       </div>
@@ -828,6 +1034,8 @@ function ProductForm({
     const specialOfferRaw = (formData.get("specialOfferPrice") as string)?.trim() ?? "";
     const specialOfferPrice = specialOfferRaw === "" ? null : Math.max(0, parseInt(specialOfferRaw, 10) || 0);
     const sequence = Math.max(0, parseInt((formData.get("sequence") as string) || "0", 10) || 0);
+    const lowSeatsRaw = (formData.get("lowSeatsThreshold") as string)?.trim() ?? "";
+    const lowSeatsThreshold = lowSeatsRaw === "" ? null : Math.max(0, parseInt(lowSeatsRaw, 10) || 0);
     const data = {
       name: formData.get("name") as string,
       line: formData.get("line") as string,
@@ -835,9 +1043,8 @@ function ProductForm({
       price: parseInt(formData.get("price") as string) || 0,
       specialOfferPrice,
       stock,
-      isKit: formData.get("isKit") === "on",
-      isIndividual: formData.get("isIndividual") === "on",
       sequence,
+      lowSeatsThreshold,
       imageUrl: imageUrl || undefined,
     };
 
@@ -865,7 +1072,7 @@ function ProductForm({
   return (
     <div className="bg-porcelain rounded-xl border border-gold-200/50 shadow-sm p-4 tablet:p-5 tablet-lg:p-6">
       <h3 className="text-lg font-semibold text-jet mb-4">
-        Nuevo Producto
+        Nuevo Tour
       </h3>
 
       {error && (
@@ -898,7 +1105,7 @@ function ProductForm({
           <p className="text-jet/50 text-xs mt-1">Si se define, aparecerá en la venta con precio normal y oferta.</p>
         </div>
         <div>
-          <label htmlFor="create-stock" className="block text-sm font-medium text-jet/80 mb-1">Stock Inicial</label>
+          <label htmlFor="create-stock" className="block text-sm font-medium text-jet/80 mb-1">Plazas / Capacidad</label>
           <input
             id="create-stock"
             name="stock"
@@ -906,10 +1113,20 @@ function ProductForm({
             placeholder="0 o - (siempre disponible)"
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
-          <p className="text-jet/50 text-xs mt-1">Use &quot;-&quot; para siempre disponible (solo se registran ventas).</p>
+          <p className="text-jet/50 text-xs mt-1">Use &quot;-&quot; para siempre disponible (solo se registran reservas).</p>
         </div>
-        
-        {/* Sequence - display order in catalog */}
+        <div>
+          <label htmlFor="create-lowSeatsThreshold" className="block text-sm font-medium text-jet/80 mb-1">Umbral plazas bajas</label>
+          <input
+            id="create-lowSeatsThreshold"
+            name="lowSeatsThreshold"
+            type="number"
+            min={0}
+            placeholder="Usar valor por defecto"
+            className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
+          />
+          <p className="text-jet/50 text-xs mt-1">Si se define, en el sitio se mostrará &quot;¡Pocas plazas!&quot; cuando queden tantas o menos. Vacío = usar el valor por defecto de Ajustes.</p>
+        </div>
         <div>
           <label htmlFor="create-sequence" className="block text-sm font-medium text-jet/80 mb-1">Orden en catálogo</label>
           <input
@@ -921,30 +1138,7 @@ function ProductForm({
             placeholder="0"
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
-          <p className="text-jet/50 text-xs mt-1">Número menor = aparece primero en Kits o Individuales.</p>
-        </div>
-        {/* Kit / Individual category checkboxes for main site filtering */}
-        <div className="mobile-landscape:col-span-2 tablet:col-span-2 space-y-3">
-          <p className="text-sm font-medium text-jet/80">Categoría (para el sitio web)</p>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              name="isKit"
-              className="w-5 h-5 rounded border-gold-200/50 text-aqua-700 focus:ring-aqua-500"
-            />
-            <span className="text-sm font-medium text-jet/80">Kit</span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              name="isIndividual"
-              className="w-5 h-5 rounded border-gold-200/50 text-aqua-700 focus:ring-aqua-500"
-            />
-            <span className="text-sm font-medium text-jet/80">Individual</span>
-          </label>
-          <p className="text-jet/50 text-xs">
-            Marque Kit y/o Individual para separar categorías en el catálogo público cuando esté listo.
-          </p>
+          <p className="text-jet/50 text-xs mt-1">Número menor = aparece primero en el catálogo.</p>
         </div>
         
         {/* Image upload field */}
@@ -1112,6 +1306,8 @@ function EditProductForm({
     const specialOfferRaw = (formData.get("specialOfferPrice") as string)?.trim() ?? "";
     const specialOfferPrice = specialOfferRaw === "" ? null : Math.max(0, parseInt(specialOfferRaw, 10) || 0);
     const sequence = Math.max(0, parseInt((formData.get("sequence") as string) || "0", 10) || 0);
+    const lowSeatsRaw = (formData.get("lowSeatsThreshold") as string)?.trim() ?? "";
+    const lowSeatsThreshold = lowSeatsRaw === "" ? null : Math.max(0, parseInt(lowSeatsRaw, 10) || 0);
     const data = {
       name: formData.get("name") as string,
       line: formData.get("line") as string,
@@ -1120,9 +1316,8 @@ function EditProductForm({
       specialOfferPrice,
       stock,
       sold: parseInt(formData.get("sold") as string) || 0,
-      isKit: formData.get("isKit") === "on",
-      isIndividual: formData.get("isIndividual") === "on",
       sequence,
+      lowSeatsThreshold,
       imageUrl: imageUrl || null,
     };
 
@@ -1151,7 +1346,7 @@ function EditProductForm({
     <div className={embedInModal ? "p-4 tablet:p-5 tablet-lg:p-6" : "bg-porcelain rounded-xl border border-gold-200/50 shadow-sm p-4 tablet:p-5 tablet-lg:p-6"}>
       {!embedInModal && (
         <h3 className="text-lg font-semibold text-jet mb-4">
-          Editar Producto
+          Editar Tour
         </h3>
       )}
 
@@ -1203,7 +1398,7 @@ function EditProductForm({
           <p className="text-jet/50 text-xs mt-1">Si se define, aparecerá en la venta con precio normal y oferta.</p>
         </div>
         <div>
-          <label htmlFor="edit-stock" className="block text-sm font-medium text-jet/80 mb-1">Stock</label>
+          <label htmlFor="edit-stock" className="block text-sm font-medium text-jet/80 mb-1">Plazas / Capacidad</label>
           <input
             id="edit-stock"
             name="stock"
@@ -1215,11 +1410,24 @@ function EditProductForm({
           <p className="text-jet/50 text-xs mt-1">Use &quot;-&quot; para siempre disponible.</p>
         </div>
         <FormField
-          label="Unidades Vendidas"
+          label="Reservas"
           name="sold"
           type="number"
           defaultValue={product.sold.toString()}
         />
+        <div>
+          <label htmlFor="edit-lowSeatsThreshold" className="block text-sm font-medium text-jet/80 mb-1">Umbral plazas bajas</label>
+          <input
+            id="edit-lowSeatsThreshold"
+            name="lowSeatsThreshold"
+            type="number"
+            min={0}
+            defaultValue={(product as { lowSeatsThreshold?: number | null }).lowSeatsThreshold ?? ""}
+            placeholder="Usar valor por defecto"
+            className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
+          />
+          <p className="text-jet/50 text-xs mt-1">Vacío = usar el valor por defecto de Ajustes.</p>
+        </div>
         <div>
           <label htmlFor="edit-sequence" className="block text-sm font-medium text-jet/80 mb-1">Orden en catálogo</label>
           <input
@@ -1231,32 +1439,7 @@ function EditProductForm({
             placeholder="0"
             className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500"
           />
-          <p className="text-jet/50 text-xs mt-1">Número menor = aparece primero en Kits o Individuales.</p>
-        </div>
-        {/* Kit / Individual category checkboxes */}
-        <div className="mobile-landscape:col-span-2 tablet:col-span-2 space-y-3">
-          <p className="text-sm font-medium text-jet/80">Categoría (para el sitio web)</p>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              name="isKit"
-              defaultChecked={!!(product as { isKit?: boolean }).isKit}
-              className="w-5 h-5 rounded border-gold-200/50 text-aqua-700 focus:ring-aqua-500"
-            />
-            <span className="text-sm font-medium text-jet/80">Kit</span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              name="isIndividual"
-              defaultChecked={!!(product as { isIndividual?: boolean }).isIndividual}
-              className="w-5 h-5 rounded border-gold-200/50 text-aqua-700 focus:ring-aqua-500"
-            />
-            <span className="text-sm font-medium text-jet/80">Individual</span>
-          </label>
-          <p className="text-jet/50 text-xs">
-            Marque Kit y/o Individual para separar categorías en el catálogo público.
-          </p>
+          <p className="text-jet/50 text-xs mt-1">Número menor = aparece primero en el catálogo.</p>
         </div>
         
         {/* Image upload field */}
@@ -1606,20 +1789,14 @@ function EditInvoiceModal({
       };
     })
   );
-  const [dropdownOpen, setDropdownOpen] = useState<"kits" | "individuals" | null>(null);
-  const [searchTermKits, setSearchTermKits] = useState("");
-  const [searchTermIndividuals, setSearchTermIndividuals] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState<"tours" | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dropdownKitsRef = useRef<HTMLDivElement>(null);
-  const dropdownIndividualsRef = useRef<HTMLDivElement>(null);
+  const dropdownToursRef = useRef<HTMLDivElement>(null);
 
   const subtotal = rows.reduce((sum, r) => sum + r.total, 0);
   const productsWithCatalog = products as ProductWithCatalog[];
-  const kitsAndLineas = productsWithCatalog.filter((p) => p.isKit === true);
-  const individuals = productsWithCatalog.filter(
-    (p) => p.isIndividual === true || (!p.isKit && !p.isIndividual)
-  );
   const filterBySearch = (list: ProductWithCatalog[], term: string) =>
     term.trim()
       ? list.filter(
@@ -1628,19 +1805,13 @@ function EditInvoiceModal({
             p.line.toLowerCase().includes(term.toLowerCase())
         )
       : list;
-  const filteredKits = filterBySearch(kitsAndLineas, searchTermKits);
-  const filteredIndividuals = filterBySearch(individuals, searchTermIndividuals);
-  const kitsOptions = buildProductOptions(filteredKits);
-  const individualsOptions = buildProductOptions(filteredIndividuals);
+  const filteredTours = filterBySearch(productsWithCatalog, searchTerm);
+  const tourOptions = buildProductOptions(filteredTours);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       const target = e.target as Node;
-      if (
-        dropdownKitsRef.current?.contains(target) ||
-        dropdownIndividualsRef.current?.contains(target)
-      )
-        return;
+      if (dropdownToursRef.current?.contains(target)) return;
       setDropdownOpen(null);
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -1680,8 +1851,7 @@ function EditInvoiceModal({
       ]);
     }
     setDropdownOpen(null);
-    setSearchTermKits("");
-    setSearchTermIndividuals("");
+    setSearchTerm("");
   }
 
   function removeRow(index: number) {
@@ -1794,64 +1964,33 @@ function EditInvoiceModal({
               </div>
             )}
             <div className="space-y-3 mb-4">
-              <label className="block text-sm font-medium text-jet/80">Agregar producto</label>
-              <div className="space-y-2">
-                <div ref={dropdownKitsRef} className="relative">
-                  <label className="block text-xs text-jet/60 mb-1">Kits y Líneas</label>
-                  <button
-                    type="button"
-                    onClick={() => setDropdownOpen((o) => (o === "kits" ? null : "kits"))}
-                    className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-left text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500 min-h-[40px] flex items-center justify-between"
+              <label className="block text-sm font-medium text-jet/80">Agregar tour</label>
+              <div ref={dropdownToursRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setDropdownOpen((o) => (o === "tours" ? null : "tours"))}
+                  className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-left text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500 min-h-[40px] flex items-center justify-between"
+                >
+                  <span className="text-jet/60">-- Agregar tour --</span>
+                  <svg
+                    className={`w-4 h-4 text-jet/40 transition-transform ${dropdownOpen === "tours" ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <span className="text-jet/60">-- Agregar kit o línea --</span>
-                    <svg
-                      className={`w-4 h-4 text-jet/40 transition-transform ${dropdownOpen === "kits" ? "rotate-180" : ""}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {dropdownOpen === "kits" && (
-                    <ProductDropdownPanel
-                      searchTerm={searchTermKits}
-                      onSearchChange={setSearchTermKits}
-                      options={kitsOptions}
-                      existingItems={rows}
-                      onSelect={(id, price) => addProduct(id, price)}
-                      UNLIMITED_STOCK={UNLIMITED_STOCK}
-                    />
-                  )}
-                </div>
-                <div ref={dropdownIndividualsRef} className="relative">
-                  <label className="block text-xs text-jet/60 mb-1">Productos Individuales</label>
-                  <button
-                    type="button"
-                    onClick={() => setDropdownOpen((o) => (o === "individuals" ? null : "individuals"))}
-                    className="w-full bg-pearl border border-gold-200/50 rounded-lg px-3 py-2 text-left text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500 min-h-[40px] flex items-center justify-between"
-                  >
-                    <span className="text-jet/60">-- Agregar producto individual --</span>
-                    <svg
-                      className={`w-4 h-4 text-jet/40 transition-transform ${dropdownOpen === "individuals" ? "rotate-180" : ""}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {dropdownOpen === "individuals" && (
-                    <ProductDropdownPanel
-                      searchTerm={searchTermIndividuals}
-                      onSearchChange={setSearchTermIndividuals}
-                      options={individualsOptions}
-                      existingItems={rows}
-                      onSelect={(id, price) => addProduct(id, price)}
-                      UNLIMITED_STOCK={UNLIMITED_STOCK}
-                    />
-                  )}
-                </div>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {dropdownOpen === "tours" && (
+                  <ProductDropdownPanel
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    options={tourOptions}
+                    existingItems={rows}
+                    onSelect={(id, price) => addProduct(id, price)}
+                    UNLIMITED_STOCK={UNLIMITED_STOCK}
+                  />
+                )}
               </div>
             </div>
             <div className="space-y-3">
@@ -1958,7 +2097,7 @@ function EditInvoiceModal({
 }
 
 /** Product type with optional catalog fields for sale form. */
-type ProductWithCatalog = Product & { specialOfferPrice?: number | null; sequence?: number; isKit?: boolean; isIndividual?: boolean };
+type ProductWithCatalog = Product & { specialOfferPrice?: number | null; sequence?: number; lowSeatsThreshold?: number | null };
 
 /**
  * Reusable product dropdown panel for sale form and edit-invoice modal.
@@ -2018,7 +2157,7 @@ function ProductDropdownPanel({
                       {isOffer ? "Oferta RD$" : "RD$"} {price.toLocaleString()}
                     </p>
                     <p className={`text-xs ${outOfStock ? "text-danger" : "text-jet/50"}`}>
-                      {outOfStock ? "Agotado" : p.stock === UNLIMITED_STOCK ? "Siempre disponible" : `Stock: ${p.stock}`}
+                      {outOfStock ? "Sin plazas" : p.stock === UNLIMITED_STOCK ? "Siempre disponible" : `Plazas: ${p.stock}`}
                     </p>
                   </div>
                   {alreadyAdded && !outOfStock && (
@@ -2035,8 +2174,8 @@ function ProductDropdownPanel({
 }
 
 /**
- * Builds sorted product options for dropdowns. Ofertas (products with specialOfferPrice) first,
- * then by sequence, then by name.
+ * Builds sorted product options for dropdowns. All products with normal price;
+ * products with specialOfferPrice also get an offer option. Sorted by sequence, then name.
  * @param products - Filtered products to build options from.
  * @returns Array of { product, price, isOffer } sorted for display.
  */
@@ -2046,12 +2185,13 @@ function buildProductOptions(
   const hasOffer = (p: ProductWithCatalog) =>
     p.specialOfferPrice != null && p.specialOfferPrice > 0;
   const seq = (p: ProductWithCatalog) => p.sequence ?? 0;
-  const sortedProducts = [...products].filter(hasOffer).sort(
+  const sortedProducts = [...products].sort(
     (a, b) =>
       seq(a) - seq(b) || a.name.localeCompare(b.name) || a.line.localeCompare(b.line)
   );
   const options: Array<{ product: ProductWithCatalog; price: number; isOffer: boolean }> = [];
   for (const p of sortedProducts) {
+    options.push({ product: p, price: p.price, isOffer: false });
     if (hasOffer(p)) options.push({ product: p, price: p.specialOfferPrice!, isOffer: true });
   }
   return options;
@@ -2075,11 +2215,9 @@ function SaleForm({
 }) {
   // Product selection state
   const [items, setItems] = useState<SaleItem[]>([]);
-  const [dropdownOpen, setDropdownOpen] = useState<"kits" | "individuals" | null>(null);
-  const [searchTermKits, setSearchTermKits] = useState("");
-  const [searchTermIndividuals, setSearchTermIndividuals] = useState("");
-  const dropdownKitsRef = useRef<HTMLDivElement>(null);
-  const dropdownIndividualsRef = useRef<HTMLDivElement>(null);
+  const [dropdownOpen, setDropdownOpen] = useState<"tours" | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownToursRef = useRef<HTMLDivElement>(null);
 
   // Customer info state (required)
   const [customerName, setCustomerName] = useState("");
@@ -2140,10 +2278,6 @@ function SaleForm({
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
 
   const productsWithCatalog = products as ProductWithCatalog[];
-  const kitsAndLineas = productsWithCatalog.filter((p) => p.isKit === true);
-  const individuals = productsWithCatalog.filter(
-    (p) => p.isIndividual === true || (!p.isKit && !p.isIndividual)
-  );
   const filterBySearch = (list: ProductWithCatalog[], term: string) =>
     term.trim()
       ? list.filter(
@@ -2152,20 +2286,13 @@ function SaleForm({
             p.line.toLowerCase().includes(term.toLowerCase())
         )
       : list;
-  const filteredKits = filterBySearch(kitsAndLineas, searchTermKits);
-  const filteredIndividuals = filterBySearch(individuals, searchTermIndividuals);
-  const kitsOptions = buildProductOptions(filteredKits);
-  const individualsOptions = buildProductOptions(filteredIndividuals);
+  const filteredTours = filterBySearch(productsWithCatalog, searchTerm);
+  const tourOptions = buildProductOptions(filteredTours);
 
-  // Close dropdown on click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
-      if (
-        dropdownKitsRef.current?.contains(target) ||
-        dropdownIndividualsRef.current?.contains(target)
-      )
-        return;
+      if (dropdownToursRef.current?.contains(target)) return;
       setDropdownOpen(null);
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -2439,23 +2566,21 @@ function SaleForm({
         {/* Column 1: Product selection */}
         <div className="min-w-0 space-y-3">
           <label className="block text-sm font-medium text-jet/80 mb-2">
-            Seleccionar Producto
+            Seleccionar tour
           </label>
 
-          {/* Kits y Líneas dropdown */}
-          <div ref={dropdownKitsRef} className="relative">
-            <label className="block text-xs text-jet/60 mb-1">Kits y Líneas</label>
+          <div ref={dropdownToursRef} className="relative">
             <button
               type="button"
               onClick={() => {
-                setDropdownOpen((o) => (o === "kits" ? null : "kits"));
+                setDropdownOpen((o) => (o === "tours" ? null : "tours"));
                 clearFieldError("items");
               }}
               className={`w-full bg-pearl border rounded-lg px-3 py-2.5 text-left text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500 min-h-[44px] flex items-center justify-between transition-colors hover:bg-pearl/80 ${fieldErrors.has("items") ? "border-danger" : items.length > 0 ? "border-success/50" : "border-gold-200/50"}`}
             >
-              <span className="text-jet/60">-- Agregar kit o línea --</span>
+              <span className="text-jet/60">-- Agregar tour --</span>
               <svg
-                className={`w-5 h-5 text-jet/40 transition-transform ${dropdownOpen === "kits" ? "rotate-180" : ""}`}
+                className={`w-5 h-5 text-jet/40 transition-transform ${dropdownOpen === "tours" ? "rotate-180" : ""}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -2463,53 +2588,16 @@ function SaleForm({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            {dropdownOpen === "kits" && (
+            {dropdownOpen === "tours" && (
               <ProductDropdownPanel
-                searchTerm={searchTermKits}
-                onSearchChange={setSearchTermKits}
-                options={kitsOptions}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                options={tourOptions}
                 existingItems={items}
                 onSelect={(id, price) => {
                   handleAddProduct(id, price);
                   setDropdownOpen(null);
-                  setSearchTermKits("");
-                }}
-                UNLIMITED_STOCK={UNLIMITED_STOCK}
-              />
-            )}
-          </div>
-
-          {/* Productos Individuales dropdown */}
-          <div ref={dropdownIndividualsRef} className="relative">
-            <label className="block text-xs text-jet/60 mb-1">Productos Individuales</label>
-            <button
-              type="button"
-              onClick={() => {
-                setDropdownOpen((o) => (o === "individuals" ? null : "individuals"));
-                clearFieldError("items");
-              }}
-              className={`w-full bg-pearl border rounded-lg px-3 py-2.5 text-left text-jet text-sm focus:outline-none focus:ring-2 focus:ring-aqua-500 min-h-[44px] flex items-center justify-between transition-colors hover:bg-pearl/80 ${fieldErrors.has("items") ? "border-danger" : items.length > 0 ? "border-success/50" : "border-gold-200/50"}`}
-            >
-              <span className="text-jet/60">-- Agregar producto individual --</span>
-              <svg
-                className={`w-5 h-5 text-jet/40 transition-transform ${dropdownOpen === "individuals" ? "rotate-180" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {dropdownOpen === "individuals" && (
-              <ProductDropdownPanel
-                searchTerm={searchTermIndividuals}
-                onSearchChange={setSearchTermIndividuals}
-                options={individualsOptions}
-                existingItems={items}
-                onSelect={(id, price) => {
-                  handleAddProduct(id, price);
-                  setDropdownOpen(null);
-                  setSearchTermIndividuals("");
+                  setSearchTerm("");
                 }}
                 UNLIMITED_STOCK={UNLIMITED_STOCK}
               />
@@ -2895,7 +2983,7 @@ function Invoice({
             {brandConfig.addressStreet && <p className="text-jet/70 text-sm">{brandConfig.addressStreet}</p>}
             {brandConfig.addressCity && <p className="text-jet/70 text-sm">{brandConfig.addressCity}</p>}
             {brandConfig.addressCountry && <p className="text-jet/70 text-sm">{brandConfig.addressCountry}</p>}
-            {brandConfig.whatsappNumber && <p className="text-jet/70 text-sm mt-2">📞 {brandConfig.whatsappNumber.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")}</p>}
+            {brandConfig.whatsappNumber && <p className="text-jet/70 text-sm mt-2">📞 {formatPhoneForDisplay(brandConfig.whatsappNumber)}</p>}
             {brandConfig.contactEmail && <p className="text-jet/70 text-sm">📧 {brandConfig.contactEmail}</p>}
           </div>
 
@@ -2981,7 +3069,7 @@ function Invoice({
             {brandConfig.brandName} — {brandConfig.tagline}
           </p>
           <p className="text-jet/50 text-xs mt-1">
-            {[brandConfig.addressStreet, brandConfig.addressCity].filter(Boolean).join(", ")}{brandConfig.whatsappNumber && ` • WhatsApp: ${brandConfig.whatsappNumber.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")}`}
+            {[brandConfig.addressStreet, brandConfig.addressCity].filter(Boolean).join(", ")}{brandConfig.whatsappNumber && ` • WhatsApp: ${formatPhoneForDisplay(brandConfig.whatsappNumber)}`}
           </p>
           <p className="text-jet/40 text-xs mt-2">
             {brandConfig.instagramUrl && `Síguenos en Instagram: ${brandConfig.instagramHandle || brandConfig.instagramUrl}`}

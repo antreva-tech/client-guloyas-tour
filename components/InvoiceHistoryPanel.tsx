@@ -7,7 +7,7 @@ import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { getProvincias, getMunicipios } from "@/lib/locationData";
 import { formatDate, formatDateTime } from "@/lib/formatDate";
-import { formatPhoneForWhatsApp } from "@/lib/phone";
+import { formatPhoneForDisplay, formatPhoneForWhatsApp } from "@/lib/phone";
 import { brandConfig } from "@/lib/brandConfig";
 
 /**
@@ -600,26 +600,6 @@ export function InvoiceHistoryPanel({
     []
   );
 
-  const handleContactTracked = useCallback(
-    (batchId: string, type: "whatsapp" | "call") => {
-      setContactStats((prev) => {
-        const cur = prev[batchId] ?? {
-          whatsappCount: 0,
-          callCount: 0,
-        };
-        return {
-          ...prev,
-          [batchId]: {
-            whatsappCount:
-              cur.whatsappCount + (type === "whatsapp" ? 1 : 0),
-            callCount: cur.callCount + (type === "call" ? 1 : 0),
-          },
-        };
-      });
-    },
-    []
-  );
-
   /**
    * Seller filter options: merge Seller table names with unique names from invoices.
    * Ensures dropdown matches names actually on invoices (including legacy/import data).
@@ -1164,7 +1144,6 @@ export function InvoiceHistoryPanel({
             onPaymentUpdated?.();
           }}
           onInvoiceUpdated={() => void loadInvoices()}
-          onContactTracked={handleContactTracked}
         />
       )}
     </div>
@@ -1218,6 +1197,7 @@ function InvoiceDetailModal({
   const [isUpdatingPhone, setIsUpdatingPhone] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isDownloadingServerPdf, setIsDownloadingServerPdf] = useState(false);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
   const [currentIsPaid, setCurrentIsPaid] = useState(invoice.isPaid);
   const [whatsappCount, setWhatsappCount] = useState(invoice.whatsappCount ?? 0);
@@ -1329,7 +1309,7 @@ function InvoiceDetailModal({
   /**
    * Tracks contact action and opens WhatsApp with order information.
    */
-  async function handleWhatsAppClick() {
+  function handleWhatsAppClick() {
     if (!invoice.customerPhone) return;
     const phone = formatPhoneForWhatsApp(invoice.customerPhone);
     if (!phone) return;
@@ -1337,42 +1317,14 @@ function InvoiceDetailModal({
     const url = new URL("https://wa.me/" + phone);
     url.searchParams.set("text", message);
     window.open(url.toString(), "_blank");
-    try {
-      const res = await fetch(`/api/sales/${invoice.batchId}/track-contact`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "whatsapp" }),
-      });
-      if (res.ok) {
-        setWhatsappCount((c) => c + 1);
-        onContactTracked?.(invoice.batchId, "whatsapp");
-      }
-    } catch {
-      /* ignore */
-    }
   }
 
-  /**
-   * Tracks contact action and opens phone dialer.
-   */
-  async function handleCallClick() {
+  /** Opens phone dialer. */
+  function handleCallClick() {
     if (!invoice.customerPhone) return;
     const phone = invoice.customerPhone.replace(/\D/g, "");
     if (!phone) return;
     window.open(`tel:${phone}`, "_self");
-    try {
-      const res = await fetch(`/api/sales/${invoice.batchId}/track-contact`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "call" }),
-      });
-      if (res.ok) {
-        setCallCount((c) => c + 1);
-        onContactTracked?.(invoice.batchId, "call");
-      }
-    } catch {
-      /* ignore */
-    }
   }
 
   /**
@@ -1514,6 +1466,28 @@ function InvoiceDetailModal({
       return;
     }
     onVoid(voidReason);
+  }
+
+  /**
+   * Downloads the server-generated PDF invoice (Letter, clean layout per CURSOR_TASK_INVOICE_PDF).
+   */
+  async function handleDownloadServerPdf() {
+    setIsDownloadingServerPdf(true);
+    try {
+      const res = await fetch(`/api/invoices/${invoice.batchId}/pdf`, { credentials: "include" });
+      if (!res.ok) throw new Error(res.status === 401 ? "No autorizado" : "Error al generar PDF");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Factura-${invoice.batchId.slice(-8).toUpperCase()}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Error downloading server PDF:", e);
+    } finally {
+      setIsDownloadingServerPdf(false);
+    }
   }
 
   /**
@@ -2141,7 +2115,7 @@ function InvoiceDetailModal({
             <p className="text-jet font-medium">¡Gracias por su compra!</p>
             <p className="text-jet/60 text-sm mt-1">{brandConfig.brandName} — {brandConfig.tagline}</p>
             {brandConfig.whatsappNumber && (
-              <p className="text-jet/50 text-xs mt-1">WhatsApp: {brandConfig.whatsappNumber.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")}</p>
+              <p className="text-jet/50 text-xs mt-1">WhatsApp: {formatPhoneForDisplay(brandConfig.whatsappNumber)}</p>
             )}
           </div>
         </div>
@@ -2169,11 +2143,21 @@ function InvoiceDetailModal({
             )}
             <button
               type="button"
+              onClick={handleDownloadServerPdf}
+              disabled={isDownloadingServerPdf || invoice.isVoided}
+              className="flex-1 bg-aqua-700 hover:bg-aqua-700/90 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+              title="Descargar factura PDF (formato oficial Letter)"
+            >
+              {isDownloadingServerPdf ? "Descargando..." : "📄 Descargar PDF"}
+            </button>
+            <button
+              type="button"
               onClick={handleGeneratePdf}
               disabled={isGeneratingPdf}
-              className="flex-1 bg-aqua-700 hover:bg-aqua-700/90 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+              className="flex-1 bg-jet/80 hover:bg-jet text-white py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+              title="Generar PDF desde vista previa (HTML)"
             >
-              {isGeneratingPdf ? "Generando..." : "📄 Generar PDF"}
+              {isGeneratingPdf ? "Generando..." : "Vista previa PDF"}
             </button>
           </div>
         </div>
@@ -2252,7 +2236,7 @@ function InvoiceDetailModal({
                     brandConfig.addressCountry,
                     brandConfig.contactEmail,
                     brandConfig.contactEmailSecondary,
-                    brandConfig.whatsappNumber ? brandConfig.whatsappNumber.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") : null,
+                    brandConfig.whatsappNumber ? formatPhoneForDisplay(brandConfig.whatsappNumber) : null,
                     brandConfig.instagramUrl ? `Instagram: ${brandConfig.instagramHandle || brandConfig.instagramUrl}` : null,
                   ].filter(Boolean) as string[];
                   return lines.length > 0 ? lines.map((l, i) => <span key={i}>{l}{i < lines.length - 1 && <br />}</span>) : brandConfig.brandName;

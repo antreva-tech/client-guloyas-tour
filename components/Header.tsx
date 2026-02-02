@@ -23,7 +23,7 @@ export function Header() {
   const navLinks = [
     { href: "#productos", label: "Productos" },
     { href: "#nosotros", label: "Nosotros" },
-    { href: "#envios", label: "Envíos" },
+    { href: "#reservar", label: "Cómo reservar" },
     { href: "#contacto", label: "Contacto" },
   ];
 
@@ -97,15 +97,15 @@ export function Header() {
   }, [isMenuActive]);
 
   return (
-    <header 
-      className="fixed top-0 left-0 right-0 z-[1000] backdrop-blur-sm border-b"
-      style={{ backgroundColor: "rgba(11, 15, 20, 0.97)", borderColor: "#2A3441" }}
+    <header
+      className="fixed top-0 left-0 right-0 z-[1000] backdrop-blur-sm border-b border-brand-border/20"
+      style={{ backgroundColor: "rgba(25, 23, 59, 0.97)" }}
     >
       <nav className="relative z-[1001] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo with light backdrop for visibility */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="bg-porcelain/95 rounded-lg px-3 py-1.5">
+            <div className="bg-white/95 rounded-lg px-3 py-1.5">
               <Image
                 src={brandConfig.logoPath}
                 alt={brandConfig.brandName}
@@ -123,8 +123,7 @@ export function Header() {
               <a
                 key={link.href}
                 href={link.href}
-                className="hover:opacity-100 transition-colors text-sm font-medium"
-                style={{ color: "rgba(254, 254, 254, 0.8)" }}
+                className="text-night-text/80 hover:text-brand-sky transition-colors text-sm font-medium"
               >
                 {link.label}
               </a>
@@ -139,12 +138,11 @@ export function Header() {
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden p-2 rounded-lg touch-manipulation transition-all duration-300"
-            style={{ 
-              backgroundColor: isMenuOpen || isClosing ? "#C8A96A" : "transparent",
-              color: isMenuOpen || isClosing ? "#000000" : "#FEFEFE",
-              border: isMenuOpen || isClosing ? "2px solid #C8A96A" : "none"
-            }}
+            className={`md:hidden p-2 rounded-lg touch-manipulation transition-all duration-300 ${
+              isMenuOpen || isClosing
+                ? "bg-brand-sunset text-brand-ink border-2 border-brand-sunset"
+                : "bg-transparent text-night-text border-none"
+            }`}
             aria-label={isMenuOpen || isClosing ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={isMenuOpen || isClosing}
             onClick={() => (isMenuOpen || isClosing ? startCloseMenu() : setIsMenuOpen(true))}
@@ -182,7 +180,7 @@ export function Header() {
           <div className="fixed inset-0 md:hidden z-[1100] flex" aria-hidden="true">
             {/* Backdrop: blur + dark overlay */}
             <div
-              className={`absolute inset-0 bg-onyx/85 backdrop-blur-xl transition-opacity duration-300 ease-out ${
+              className={`absolute inset-0 bg-night-900/85 backdrop-blur-xl transition-opacity duration-300 ease-out ${
                 isClosing ? "opacity-0" : isEntered ? "opacity-100" : "opacity-0"
               }`}
               onClick={startCloseMenu}
@@ -191,7 +189,7 @@ export function Header() {
             {/* Panel: solid bg, slides from right */}
             <nav
               ref={menuPanelRef}
-              className={`absolute right-0 top-0 bottom-0 w-full max-w-sm flex flex-col pt-20 px-6 bg-onyx transition-transform duration-300 ease-out ${
+              className={`absolute right-0 top-0 bottom-0 w-full max-w-sm flex flex-col pt-20 px-6 bg-brand-navy transition-transform duration-300 ease-out ${
                 isClosing ? "translate-x-full" : isEntered ? "translate-x-0" : "translate-x-full"
               }`}
               onTransitionEnd={handlePanelTransitionEnd}
@@ -201,7 +199,7 @@ export function Header() {
             <button
               type="button"
               onClick={startCloseMenu}
-              className="absolute top-4 right-4 p-2 rounded-lg bg-gold-500 text-jet touch-manipulation transition-colors hover:bg-gold-200"
+              className="absolute top-4 right-4 p-2 rounded-lg bg-brand-sunset text-brand-ink touch-manipulation transition-colors hover:opacity-90"
               aria-label="Cerrar menú"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,7 +211,7 @@ export function Header() {
                 key={link.href}
                 href={link.href}
                 onClick={startCloseMenu}
-                className="py-4 text-xl font-medium border-b border-smoke text-porcelain hover:text-aqua-500 transition-colors"
+                className="py-4 text-xl font-medium border-b border-night-border text-night-text hover:text-brand-sky transition-colors"
               >
                 {link.label}
               </a>
@@ -222,20 +220,20 @@ export function Header() {
               <a
                 href="#productos"
                 onClick={startCloseMenu}
-                className="py-4 rounded-full text-center text-lg font-semibold touch-manipulation bg-aqua-500 text-jet"
+                className="py-4 rounded-full text-center text-lg font-semibold touch-manipulation bg-brand-sunset text-brand-ink"
               >
                 Ver Catálogo
               </a>
               <a
                 href="#contacto"
                 onClick={startCloseMenu}
-                className="py-4 rounded-full text-center text-lg font-semibold touch-manipulation border border-gold-500 bg-graphite text-porcelain"
+                className="py-4 rounded-full text-center text-lg font-semibold touch-manipulation border border-brand-navy bg-night-600 text-night-text"
               >
                 Contactar
               </a>
             </div>
             <div className="flex-1" />
-            <p className="text-center text-sm pb-6 text-porcelain/50">
+            <p className="text-center text-sm pb-6 text-night-muted">
               {brandConfig.brandName} © {new Date().getFullYear()}
             </p>
           </nav>

@@ -212,7 +212,7 @@ function parseProductSegment(segment: string): { lookupName: string; priceFromCe
 
 /**
  * Parses product cell: single "Name: Price" or multiple separated by " , " (e.g. individuals).
- * Examples: "Kit de Productos: 4900" or "Gotero de Ampollas: 700 , Botox: 700 , Cacao: 700".
+ * Examples: "Importación de Reservas: 4900" or "Tour A: 700 , Tour B: 700".
  * @param cell - Raw product cell value.
  * @returns Array of { lookupName, priceFromCell } for each product in the cell.
  */

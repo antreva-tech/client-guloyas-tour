@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { getDictionary } from "@/lib/i18n";
 import { brandConfig } from "@/lib/brandConfig";
+import { formatPhoneForDisplay } from "@/lib/phone";
 
 /**
  * Footer component with brand info and links.
@@ -12,7 +13,7 @@ export function Footer() {
   const t = getDictionary();
 
   const contactLines = [
-    brandConfig.whatsappNumber && `WhatsApp: ${brandConfig.whatsappNumber.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")}`,
+    brandConfig.whatsappNumber && `WhatsApp: ${formatPhoneForDisplay(brandConfig.whatsappNumber)}`,
     brandConfig.addressStreet,
     brandConfig.addressCity && brandConfig.addressCountry
       ? `${brandConfig.addressCity}, ${brandConfig.addressCountry}`
@@ -21,12 +22,12 @@ export function Footer() {
   ].filter(Boolean);
 
   return (
-    <footer className="bg-jet border-t border-smoke pb-20 sm:pb-0">
+    <footer className="bg-brand-navy border-t border-night-border pb-20 sm:pb-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
           {/* Brand - full width on mobile */}
           <div className="col-span-2 md:col-span-1 text-center md:text-left mb-4 md:mb-0">
-            <div className="inline-block bg-porcelain/95 rounded-lg px-3 py-1.5 mb-3 sm:mb-4">
+            <div className="inline-block bg-white/95 rounded-lg px-3 py-1.5 mb-3 sm:mb-4">
               <Image
                 src={brandConfig.logoPath}
                 alt={brandConfig.brandName}
@@ -35,25 +36,25 @@ export function Footer() {
                 className="h-8 sm:h-10 w-auto"
               />
             </div>
-            <p className="text-porcelain/60 text-xs sm:text-sm">
+            <p className="text-night-muted text-xs sm:text-sm">
               {t.footer.description}
             </p>
           </div>
 
           {/* Quick links */}
           <div>
-            <h4 className="text-porcelain font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Enlaces</h4>
+            <h4 className="text-night-text font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Enlaces</h4>
             <ul className="space-y-2">
               {[
-                { href: "#productos", label: "Productos" },
+                { href: "#tours", label: "Tours" },
                 { href: "#nosotros", label: "Nosotros" },
-                { href: "#envios", label: "Envíos" },
+                { href: "#reservar", label: "Cómo reservar" },
                 { href: "#contacto", label: "Contacto" },
               ].map((link) => (
                 <li key={link.href}>
                   <a
                     href={link.href}
-                    className="text-porcelain/60 hover:text-aqua-500 text-xs sm:text-sm transition-colors"
+                    className="text-night-muted hover:text-brand-sky text-xs sm:text-sm transition-colors"
                   >
                     {link.label}
                   </a>
@@ -64,8 +65,8 @@ export function Footer() {
 
           {/* Contact info */}
           <div>
-            <h4 className="text-porcelain font-semibold mb-3 sm:mb-4 text-sm sm:text-base">{t.footer.contactTitle}</h4>
-            <ul className="space-y-2 text-xs sm:text-sm text-porcelain/60">
+            <h4 className="text-night-text font-semibold mb-3 sm:mb-4 text-sm sm:text-base">{t.footer.contactTitle}</h4>
+            <ul className="space-y-2 text-xs sm:text-sm text-night-muted">
               {contactLines.map((line) => (
                 <li key={String(line)}>{line}</li>
               ))}
@@ -76,7 +77,7 @@ export function Footer() {
                 href={brandConfig.instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-porcelain/60 hover:text-aqua-500 transition-colors touch-manipulation p-1"
+                className="text-night-muted hover:text-brand-sky transition-colors touch-manipulation p-1"
                 aria-label="Instagram"
               >
                 <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
@@ -89,8 +90,8 @@ export function Footer() {
         </div>
 
         {/* Copyright */}
-        <div className="border-t border-smoke mt-6 sm:mt-8 pt-6 sm:pt-8 text-center">
-          <p className="text-porcelain/40 text-xs sm:text-sm">
+        <div className="border-t border-night-border mt-6 sm:mt-8 pt-6 sm:pt-8 text-center">
+          <p className="text-night-muted/80 text-xs sm:text-sm">
             © {currentYear} {t.footer.copyright}
           </p>
         </div>

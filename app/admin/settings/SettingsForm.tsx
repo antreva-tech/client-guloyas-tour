@@ -195,10 +195,10 @@ function DashboardSettingsForm({
             htmlFor="lowStockThreshold"
             className="block text-sm font-medium text-jet/80 mb-1.5"
           >
-            Umbral de Stock Bajo
+            Umbral de plazas bajas (por defecto)
           </label>
           <p className="text-jet/50 text-xs mb-2">
-            Los productos con stock igual o menor a este número aparecerán en las alertas de inventario.
+            Los tours con plazas igual o menor a este número mostrarán &quot;¡Pocas plazas!&quot; en el sitio y en las alertas del panel.
           </p>
           <input
             type="number"

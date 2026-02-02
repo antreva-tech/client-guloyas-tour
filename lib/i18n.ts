@@ -80,69 +80,66 @@ export interface Dictionary {
 /** Base Spanish copy (brand-agnostic). Brand values injected at runtime. */
 const esBase: Omit<Dictionary, "common" | "hero" | "footer"> = {
   nav: {
-    products: "Productos",
+    products: "Tours",
     about: "Nosotros",
-    shipping: "Envíos",
+    shipping: "Cómo reservar",
     contact: "Contacto",
   },
   products: {
-    sectionTitle: "Nuestras Líneas de Productos",
+    sectionTitle: "Tours y Experiencias",
     sectionSubtitle:
-      "Productos de alta calidad para diferentes necesidades. Consulta disponibilidad y precios.",
+      "Descubre nuestras excursiones y experiencias. Reserva tu plaza por WhatsApp.",
     premium: "Premium",
-    consult: "Consultar",
-    helpChoose: "¿Necesitas ayuda para elegir? Contáctanos por WhatsApp",
+    consult: "Reservar",
+    helpChoose: "¿Dudas? Contáctanos por WhatsApp",
   },
   about: {
     sectionLabel: "Nuestra Historia",
     headline: "Calidad y confianza",
     paragraphs: [
-      "Marca dedicada a ofrecer productos de alta calidad.",
-      "Nos enfocamos en diseñar productos que cumplen con los más altos estándares.",
-      "Cada uno de nuestros productos está formulado con ingredientes selectos para brindar resultados visibles.",
+      "Agencia dedicada a ofrecer tours y experiencias de calidad.",
+      "Nos enfocamos en diseñar excursiones que cumplen con los más altos estándares.",
+      "Cada uno de nuestros tours está pensado para brindar experiencias memorables.",
     ],
     values: [
-      { title: "Calidad Premium", description: "Ingredientes selectos y fórmulas especializadas" },
-      { title: "Natural", description: "Componentes de calidad" },
-      { title: "Resultados", description: "Efectos visibles" },
+      { title: "Calidad Premium", description: "Experiencias seleccionadas y bien organizadas" },
+      { title: "Natural", description: "Destinos auténticos" },
+      { title: "Resultados", description: "Experiencias memorables" },
       { title: "Confianza", description: "Compromiso con la excelencia" },
     ],
   },
   shipping: {
-    sectionLabel: "Entregas",
-    headline: "Información de Envíos",
-    subheadline: "Llevamos nuestros productos a donde los necesites",
+    sectionLabel: "Cómo reservar",
+    headline: "Reserva tu experiencia en pocos pasos",
+    subheadline: "Elige tu tour, escríbenos por WhatsApp y te confirmamos punto de encuentro y detalles.",
     location: "Ubicación",
-    coordinate: "Coordinar Envío",
+    coordinate: "Consultar por WhatsApp",
     features: [
       {
-        title: "Envíos Nacionales",
-        description: "Entregas disponibles a nivel nacional.",
+        title: "Elige tu tour",
+        description: "Explora el catálogo y elige la excursión o experiencia que quieras.",
       },
       {
-        title: "Envíos Internacionales",
-        description:
-          "Para envíos internacionales, favor consultar disponibilidad y costos.",
+        title: "Reserva por WhatsApp",
+        description: "Escríbenos para confirmar disponibilidad y plazas.",
       },
       {
-        title: "Empaque Seguro",
-        description:
-          "Todos los productos son empacados cuidadosamente para garantizar su llegada en perfectas condiciones.",
+        title: "Confirmación y pago",
+        description: "Te confirmamos la reserva y coordinamos forma de pago.",
       },
       {
-        title: "Soporte Personalizado",
-        description:
-          "Coordina tu envío directamente con nuestro equipo vía WhatsApp.",
+        title: "Punto de encuentro",
+        description: "Te indicamos hora y lugar de salida para disfrutar tu tour.",
       },
     ],
   },
   contact: {
     sectionLabel: "Contacto",
-    headline: "¿Listo para hacer tu pedido?",
+    headline: "¿Listo para reservar tu tour?",
     subheadline:
-      "Contáctanos por WhatsApp para hacer tu pedido o resolver cualquier duda.",
+      "Contáctanos por WhatsApp para reservar o resolver cualquier duda.",
     whatsappCta: "Escríbenos por WhatsApp",
-    whatsappSubtext: "Respuesta rápida • Atención personalizada • Pedidos directos",
+    whatsappSubtext: "Respuesta rápida • Atención personalizada • Reservas directas",
     startChat: "Iniciar Chat",
   },
 };
@@ -157,19 +154,19 @@ function buildEs(): Dictionary {
     common: {
       brandName: brandConfig.brandName,
       tagline: brandConfig.tagline,
-      buyNow: "Comprar Ahora",
+      buyNow: "Reservar",
       contact: "Contactar",
-      viewCatalog: "Ver Catálogo",
+      viewCatalog: "Reservar un tour",
       learnMore: "Más Información",
     },
     hero: {
       headline: brandConfig.tagline,
       subheadline:
-        "Productos de alta calidad diseñados para satisfacer tus necesidades.",
+        "Tours y experiencias diseñados para que vivas momentos inolvidables.",
       since,
     },
     footer: {
-      description: "Productos de alta calidad.",
+      description: "Tours y experiencias de calidad.",
       links: "Enlaces",
       contactTitle: "Contacto",
       copyright: `${brandConfig.brandName}. Todos los derechos reservados.`,
@@ -179,21 +176,21 @@ function buildEs(): Dictionary {
 
 /** Base English copy (brand-agnostic). */
 const enBase: Omit<Dictionary, "common" | "hero" | "footer"> = {
-  nav: { products: "Products", about: "About", shipping: "Shipping", contact: "Contact" },
+  nav: { products: "Tours", about: "About", shipping: "How to book", contact: "Contact" },
   products: {
-    sectionTitle: "Our Product Lines",
-    sectionSubtitle: "High-quality products for your needs. Inquire about availability and pricing.",
+    sectionTitle: "Tours and Experiences",
+    sectionSubtitle: "Discover our excursions and experiences. Book your spot via WhatsApp.",
     premium: "Premium",
-    consult: "Inquire",
-    helpChoose: "Need help choosing? Contact us via WhatsApp",
+    consult: "Book",
+    helpChoose: "Questions? Contact us via WhatsApp",
   },
   about: {
     sectionLabel: "Our Story",
     headline: "Quality and trust",
     paragraphs: [
-      "A brand dedicated to offering high-quality products.",
-      "We focus on designing products that meet the highest standards.",
-      "Each of our products is formulated with select ingredients for visible results.",
+      "Agency dedicated to offering quality tours and experiences.",
+      "We focus on designing excursions that meet the highest standards.",
+      "Each of our tours is designed to deliver memorable experiences.",
     ],
     values: [
       { title: "Premium Quality", description: "Select ingredients and specialized formulas" },
@@ -203,24 +200,24 @@ const enBase: Omit<Dictionary, "common" | "hero" | "footer"> = {
     ],
   },
   shipping: {
-    sectionLabel: "Delivery",
-    headline: "Shipping Information",
-    subheadline: "We deliver our products wherever you need them",
+    sectionLabel: "How to book",
+    headline: "Book your experience in a few steps",
+    subheadline: "Choose your tour, message us on WhatsApp, and we'll confirm meeting point and details.",
     location: "Location",
-    coordinate: "Coordinate Shipping",
+    coordinate: "Contact via WhatsApp",
     features: [
-      { title: "National Shipping", description: "Deliveries available nationwide." },
-      { title: "International Shipping", description: "For international shipments, inquire about availability and costs." },
-      { title: "Secure Packaging", description: "All products are carefully packaged for safe delivery." },
-      { title: "Personalized Support", description: "Coordinate your shipment directly with our team via WhatsApp." },
+      { title: "Choose your tour", description: "Browse the catalog and pick the excursion or experience you want." },
+      { title: "Book via WhatsApp", description: "Message us to confirm availability and spots." },
+      { title: "Confirmation and payment", description: "We confirm your booking and arrange payment." },
+      { title: "Meeting point", description: "We give you the time and place to start your tour." },
     ],
   },
   contact: {
     sectionLabel: "Contact",
-    headline: "Ready to place your order?",
-    subheadline: "Contact us via WhatsApp to place your order or resolve any questions.",
+    headline: "Ready to book your tour?",
+    subheadline: "Contact us via WhatsApp to book or resolve any questions.",
     whatsappCta: "Message us on WhatsApp",
-    whatsappSubtext: "Fast response • Personalized attention • Direct orders",
+    whatsappSubtext: "Fast response • Personalized attention • Direct bookings",
     startChat: "Start Chat",
   },
 };
@@ -235,18 +232,18 @@ function buildEn(): Dictionary {
     common: {
       brandName: brandConfig.brandName,
       tagline: brandConfig.tagline,
-      buyNow: "Buy Now",
+      buyNow: "Book",
       contact: "Contact",
-      viewCatalog: "View Catalog",
+      viewCatalog: "Book a tour",
       learnMore: "Learn More",
     },
     hero: {
       headline: brandConfig.tagline,
-      subheadline: "High-quality products designed to meet your needs.",
+      subheadline: "Tours and experiences designed for unforgettable moments.",
       since,
     },
     footer: {
-      description: "High-quality products.",
+      description: "Quality tours and experiences.",
       links: "Links",
       contactTitle: "Contact",
       copyright: `${brandConfig.brandName}. All rights reserved.`,

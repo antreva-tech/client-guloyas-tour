@@ -1,5 +1,6 @@
 import { getDictionary } from "@/lib/i18n";
 import { brandConfig, getWhatsAppUrl } from "@/lib/brandConfig";
+import { formatPhoneForDisplay } from "@/lib/phone";
 
 /**
  * Contact section component with WhatsApp CTA.
@@ -12,7 +13,7 @@ export function Contact() {
 
   const contacts: { type: string; value: string; href: string; primary?: boolean }[] = [];
   if (brandConfig.whatsappNumber) {
-    const display = brandConfig.whatsappNumber.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+    const display = formatPhoneForDisplay(brandConfig.whatsappNumber);
     contacts.push({
       type: "WhatsApp Business",
       value: display,
@@ -51,30 +52,33 @@ export function Contact() {
   }
 
   return (
-    <section id="contacto" className="py-12 sm:py-20 bg-pearl">
+    <section id="contacto" className="py-12 sm:py-20 bg-brand-canvas">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-8 sm:mb-12">
-          <span className="text-aqua-700 text-xs sm:text-sm font-semibold uppercase tracking-wider">
+          <span className="text-brand-sky text-xs sm:text-sm font-semibold uppercase tracking-wider">
             {t.contact.sectionLabel}
           </span>
-          <h2 className="text-2xl sm:text-4xl font-bold text-jet mt-2 mb-3 sm:mb-4">
+          <h2 className="text-2xl sm:text-4xl font-bold text-brand-ink mt-2 mb-3 sm:mb-4">
             {t.contact.headline}
           </h2>
-          <p className="text-jet/60 max-w-2xl mx-auto text-sm sm:text-base px-2">
+          <p className="text-brand-muted max-w-2xl mx-auto text-sm sm:text-base px-2">
             {t.contact.subheadline}
           </p>
         </div>
 
         {/* Main WhatsApp CTA */}
         {brandConfig.whatsappNumber && (
-        <div className="bg-gradient-to-r from-graphite to-onyx rounded-xl sm:rounded-2xl p-5 sm:p-8 md:p-12 border border-smoke mb-8 sm:mb-12">
+        <div
+          className="rounded-xl sm:rounded-2xl p-5 sm:p-8 md:p-12 border border-night-border mb-8 sm:mb-12"
+          style={{ background: "linear-gradient(180deg, #19173b 0%, #272454 60%, #5a58a2 100%)" }}
+        >
           <div className="flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-8">
             <div className="text-center md:text-left">
-              <h3 className="text-xl sm:text-2xl font-bold text-porcelain mb-1 sm:mb-2">
+              <h3 className="text-xl sm:text-2xl font-bold text-night-text mb-1 sm:mb-2">
                 {t.contact.whatsappCta}
               </h3>
-              <p className="text-porcelain/70 text-sm sm:text-base">
+              <p className="text-night-muted text-sm sm:text-base">
                 {t.contact.whatsappSubtext}
               </p>
             </div>
@@ -103,13 +107,13 @@ export function Contact() {
               rel="noopener noreferrer"
               className={`flex items-center gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-xl border transition-all touch-manipulation ${
                 contact.primary
-                  ? "bg-aqua-50 border-aqua-700/30 hover:border-aqua-700/50"
-                  : "bg-porcelain border-gold-200/40 hover:border-gold-500/50"
+                  ? "bg-brand-sky/10 border-brand-sky/30 hover:border-brand-sky/50"
+                  : "bg-white border-brand-border hover:border-brand-sunset/50"
               }`}
             >
               <div
                 className={`flex-shrink-0 ${
-                  contact.primary ? "text-aqua-700" : "text-jet/50"
+                  contact.primary ? "text-brand-sky" : "text-brand-muted"
                 }`}
               >
                 {contact.type === "WhatsApp Business" ? (
@@ -127,10 +131,10 @@ export function Contact() {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-jet/50 uppercase tracking-wider">
+                <p className="text-[10px] sm:text-xs text-brand-muted uppercase tracking-wider">
                   {contact.type}
                 </p>
-                <p className="text-jet font-medium text-xs sm:text-sm truncate">
+                <p className="text-brand-ink font-medium text-xs sm:text-sm truncate">
                   {contact.value}
                 </p>
               </div>

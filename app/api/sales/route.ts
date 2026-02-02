@@ -73,23 +73,10 @@ export async function GET(request: NextRequest) {
         db.sale.count({ where: whereClause }),
       ]);
 
-      const batchIds = [...new Set(sales.map((s) => s.batchId))];
-      const contactRecords = await db.invoiceContactTracking.findMany({
-        where: { batchId: { in: batchIds } },
-      });
-      const contactStats: Record<string, { whatsappCount: number; callCount: number }> = {};
-      for (const r of contactRecords) {
-        contactStats[r.batchId] = {
-          whatsappCount: r.whatsappCount,
-          callCount: r.callCount,
-        };
-      }
-
       const totalPages = Math.ceil(total / limit);
 
       return NextResponse.json({
         data: sales,
-        contactStats,
         pagination: {
           page,
           limit,
@@ -108,21 +95,8 @@ export async function GET(request: NextRequest) {
       orderBy: [{ batchId: "asc" }, { createdAt: "asc" }],
     });
 
-    const batchIds = [...new Set(sales.map((s) => s.batchId))];
-    const contactRecords = await db.invoiceContactTracking.findMany({
-      where: { batchId: { in: batchIds } },
-    });
-    const contactStats: Record<string, { whatsappCount: number; callCount: number }> = {};
-    for (const r of contactRecords) {
-      contactStats[r.batchId] = {
-        whatsappCount: r.whatsappCount,
-        callCount: r.callCount,
-      };
-    }
-
     return NextResponse.json({
       data: sales,
-      contactStats,
     });
   } catch (error) {
     console.error("Error fetching sales:", error);

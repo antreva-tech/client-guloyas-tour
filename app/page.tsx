@@ -10,7 +10,8 @@ import {
   WhatsAppFloat,
   SeoStructuredData,
 } from "@/components";
-import { getActiveKits, getActiveIndividuals } from "@/lib/products";
+import { getActiveProducts } from "@/lib/products";
+import { getLowStockThreshold } from "@/lib/settings";
 
 /**
  * Force dynamic rendering to ensure fresh product data on each request.
@@ -34,26 +35,33 @@ export const metadata: Metadata = {
 
 /**
  * Home page component for the retail template.
- * Server component that fetches kit products from database.
- * Only kits are shown on the main catalog.
+ * Server component that fetches tours from database.
  * Renders all marketing sections in order.
- * Mobile-first responsive design.
+ * If the database is unreachable, shows empty catalog so the page still loads.
  * @returns The main landing page layout.
  */
 export default async function Home() {
-  const [kits, individuals] = await Promise.all([
-    getActiveKits(),
-    getActiveIndividuals(),
-  ]);
-  const allProducts = [...kits, ...individuals];
+  let tours: Awaited<ReturnType<typeof getActiveProducts>> = [];
+  let defaultLowSeatsThreshold = 5;
+
+  try {
+    const [toursResult, thresholdResult] = await Promise.all([
+      getActiveProducts(),
+      getLowStockThreshold(),
+    ]);
+    tours = toursResult;
+    defaultLowSeatsThreshold = thresholdResult;
+  } catch (err) {
+    console.error("Home: database unreachable, showing empty catalog:", err);
+  }
 
   return (
     <>
-      <SeoStructuredData products={allProducts} />
+      <SeoStructuredData products={tours} />
       <Header />
       <main>
         <Hero />
-        <Catalog kits={kits} individuals={individuals} />
+        <Catalog tours={tours} defaultLowSeatsThreshold={defaultLowSeatsThreshold} />
         <About />
         <Shipping />
         <Contact />

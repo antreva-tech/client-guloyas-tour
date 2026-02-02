@@ -74,12 +74,16 @@ export const CreateProductSchema = z.object({
     .min(0, "Sold cannot be negative")
     .optional(),
   isActive: z.boolean().optional(),
-  isKit: z.boolean().optional(),
-  isIndividual: z.boolean().optional(),
   sequence: z
     .number()
     .int("Sequence must be a whole number")
     .min(0, "Sequence cannot be negative")
+    .optional(),
+  lowSeatsThreshold: z
+    .number()
+    .int("Low seats threshold must be a whole number")
+    .min(0, "Low seats threshold cannot be negative")
+    .nullable()
     .optional(),
 });
 
@@ -130,12 +134,16 @@ export const UpdateProductSchema = z.object({
     .min(0, "Sold cannot be negative")
     .optional(),
   isActive: z.boolean().optional(),
-  isKit: z.boolean().optional(),
-  isIndividual: z.boolean().optional(),
   sequence: z
     .number()
     .int("Sequence must be a whole number")
     .min(0, "Sequence cannot be negative")
+    .optional(),
+  lowSeatsThreshold: z
+    .number()
+    .int("Low seats threshold must be a whole number")
+    .min(0, "Low seats threshold cannot be negative")
+    .nullable()
     .optional(),
 });
 

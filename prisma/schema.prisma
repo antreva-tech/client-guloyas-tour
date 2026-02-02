@@ -1,48 +1,48 @@
-// Retail Web Dashboard - Prisma Schema
+// Guloyas Tours — Operations database (tours + bookings + WhatsApp)
 // Database: Neon Postgres
+//
+// Domain semantics (see docs/ and plan):
+// - Product = tour/excursion; stock = seats/capacity, sold = booked (column names kept for compatibility).
+// - Sale = booking/reservation line; batchId groups lines into one invoice.
+// - AdminSettings.lowStockThreshold = default low-seats threshold when Product.lowSeatsThreshold is null.
 
 generator client {
   provider = "prisma-client-js"
 }
 
+// directUrl for migrations is supplied by prisma.config.ts (derived from DATABASE_URL for Neon)
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
-/// Product model for the catalog
+/// Tour or excursion in the catalog (table name "products" kept for compatibility).
+/// Semantics: stock = seats/capacity, sold = booked.
 model Product {
   id          String   @id @default(cuid())
   name        String
-  line        String
+  line        String   /// Product line/category (e.g. tour type)
   description String
   price       Int
-  specialOfferPrice Int?  /// Optional special offer price (RD$); shown in sale dropdown when set
+  specialOfferPrice Int?  /// Optional special price; shown in booking dropdown when set
   currency    String   @default("RD$")
   imageUrl    String?
-  stock       Int      @default(0)
-  sold        Int      @default(0)
+  stock       Int      @default(0)   /// Seats/capacity
+  sold        Int      @default(0)   /// Booked count
   isActive    Boolean  @default(true)
-  isKit       Boolean  @default(false)
-  isIndividual Boolean @default(false)
   sequence    Int      @default(0)   /// Display order in catalog (lower = first)
+  lowSeatsThreshold Int?  /// Per-tour threshold for "low seats" badge (null = use default or hide)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   sales       Sale[]
 
   /// Index for active products sorted by creation date (catalog queries)
   @@index([isActive, createdAt])
-  /// Index for kit filtering (isActive + isKit queries)
-  @@index([isActive, isKit])
-  /// Index for individual-product filtering (isActive + isIndividual queries)
-  @@index([isActive, isIndividual])
   @@map("products")
 }
 
-/// Sale record for tracking inventory
-/// Note: New fields are nullable in DB for backward compatibility.
-/// API validation requires them for new sales.
+/// Booking/reservation line (one row per tour/quantity); batchId groups lines into one invoice.
+/// New fields are nullable in DB for backward compatibility; API validation requires them for new bookings.
 model Sale {
   id              String    @id @default(cuid())
   batchId         String    @default(cuid())
@@ -69,11 +69,11 @@ model Sale {
   createdAt       DateTime  @default(now())
   product         Product   @relation(fields: [productId], references: [id])
 
-  /// Index for date-based sales queries
+  /// Index for date-based booking queries
   @@index([createdAt])
   /// Index for batch lookup (void operations)
   @@index([batchId])
-  /// Index for product-based sales queries
+  /// Index for product-based booking queries
   @@index([productId])
   /// Index for supervisor filtering
   @@index([supervisor])
@@ -82,7 +82,7 @@ model Sale {
   @@map("sales")
 }
 
-/// Monthly sales snapshot for historical tracking
+/// Monthly revenue/bookings snapshot for historical tracking
 model MonthlySummary {
   id            String   @id @default(cuid())
   year          Int
@@ -103,8 +103,8 @@ model User {
   id                 String   @id @default(cuid())
   username           String   @unique
   passwordHash       String
-  role               String   // "supervisor" only (admin/support are env-based)
-  supervisorName     String?  // For supervisors: matches Sale.supervisor
+  role               String   /// "supervisor" only (admin/support are env-based)
+  supervisorName     String?  /// For supervisors: matches Sale.supervisor (e.g. tour/sales supervisor)
   isActive           Boolean  @default(true)
   mustChangePassword Boolean  @default(true) // Admin sets temp password; user must change on first login
   createdAt          DateTime @default(now())
@@ -125,7 +125,7 @@ model AdminCredential {
   @@map("admin_credentials")
 }
 
-/// Seller (nombre vendedor) options for sale form. Admin manages in Ajustes.
+/// Seller/guide name options for booking form. Admin manages in Ajustes.
 model Seller {
   id        String   @id @default(cuid())
   name      String   @unique
@@ -134,22 +134,32 @@ model Seller {
   @@map("sellers")
 }
 
-/// Tracks WhatsApp/call clicks per invoice batch for analytics.
-model InvoiceContactTracking {
-  batchId       String   @id
-  whatsappCount Int      @default(0)
-  callCount     Int      @default(0)
-  updatedAt     DateTime @updatedAt
-
-  @@map("invoice_contact_tracking")
-}
-
-/// Admin settings for dashboard configuration
+/// Admin settings for dashboard. lowStockThreshold = default low-seats threshold when Product.lowSeatsThreshold is null (UI: "Umbral de plazas bajas (por defecto)").
 model AdminSettings {
   id                 String   @id @default("default")
-  lowStockThreshold  Int      @default(5)
+  lowStockThreshold  Int      @default(5)  /// Default low-seats threshold for tours
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   @@map("admin_settings")
+}
+
+/// WhatsApp message log for dashboard interactions and status tracking
+model WhatsAppMessageLog {
+  id             String   @id @default(cuid())
+  direction      String   /// "outbound" | "inbound"
+  externalId     String?  /// Meta message ID
+  batchId        String?
+  productId      String?
+  customerPhone  String
+  body           String?  /// Message text or template name
+  status         String   /// "sent" | "delivered" | "read" | "failed"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([batchId])
+  @@index([productId])
+  @@index([customerPhone])
+  @@index([createdAt])
+  @@map("whatsapp_message_log")
 }

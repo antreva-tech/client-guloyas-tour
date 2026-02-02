@@ -1,49 +1,73 @@
 @import "tailwindcss";
 
-/* Tailwind v4 theme configuration */
+/* Guloyas Tours theme — docs/color-brand.md */
 @theme {
-  /* Core brand colors */
-  --color-jet: #000000;
-  --color-porcelain: #FEFEFE;
-  
-  /* Aqua palette */
-  --color-aqua-50: #D6F8FF;
-  --color-aqua-500: #08D5FA;
-  --color-aqua-700: #007C92;
-  
-  /* Luxury neutrals */
-  --color-onyx: #0B0F14;
-  --color-graphite: #141A22;
-  --color-smoke: #2A3441;
-  --color-pearl: #F6F3EE;
-  
-  /* Gold palette */
-  --color-gold-200: #D8C3A5;
-  --color-gold-500: #C8A96A;
-  
+  /* Brand palette */
+  --color-brand-navy: #19173b;
+  --color-brand-sunset: #f49724;
+  --color-brand-gold: #f8cf1c;
+  --color-brand-coral: #fa484d;
+  --color-brand-magenta: #e31b81;
+  --color-brand-sky: #579afd;
+  --color-brand-violet: #5a58a2;
+  --color-brand-sand: #feeb9b;
+  --color-brand-ink: #0b0a1b;
+  --color-brand-canvas: #f7f8fb;
+  --color-brand-border: #e6e8f0;
+  --color-brand-muted: #2a2950;
+  /* Night (dark) scale */
+  --color-night-900: #0b0a19;
+  --color-night-800: #121032;
+  --color-night-700: #19173b;
+  --color-night-600: #272454;
+  --color-night-border: #34326a;
+  --color-night-text: #f3f4ff;
+  --color-night-muted: #c7c9ff;
   /* Semantic */
-  --color-success: #1F8A70;
-  --color-danger: #B42318;
-  
-  /* Custom gradients */
-  --background-image-lux-dark: linear-gradient(180deg, #0B0F14 0%, #141A22 100%);
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-danger: #dc2626;
+  --color-info: #2563eb;
+  /* Brand gradients (color-brand §5) */
+  --background-image-brand-sunset: linear-gradient(90deg, #f8cf1c 0%, #f49724 35%, #fa484d 70%, #e31b81 100%);
+  --background-image-brand-nightfall: linear-gradient(180deg, #19173b 0%, #272454 60%, #5a58a2 100%);
+  --background-image-brand-skyline: linear-gradient(90deg, #5a58a2 0%, #579afd 100%);
+  /* Legacy aliases (admin/dashboard) — map to brand so one palette everywhere */
+  --color-jet: #0b0a1b;
+  --color-porcelain: #ffffff;
+  --color-aqua-50: #f2f7ff;
+  --color-aqua-500: #f49724;
+  --color-aqua-700: #579afd;
+  --color-onyx: #0b0a19;
+  --color-graphite: #121032;
+  --color-smoke: #34326a;
+  --color-pearl: #f7f8fb;
+  --color-gold-200: #feeb9b;
+  --color-gold-500: #f8cf1c;
 }
 
 :root {
-  /* Legacy CSS variables for custom classes */
-  --jet: #000000;
-  --porcelain: #FEFEFE;
-  --aqua-shine: #08D5FA;
-  --onyx: #0B0F14;
-  --graphite: #141A22;
-  --smoke: #2A3441;
-  --pearl: #F6F3EE;
-  --champagne-gold: #D8C3A5;
-  --soft-gold: #C8A96A;
-  --aqua-deep: #007C92;
-  --aqua-fog: #D6F8FF;
-  --success: #1F8A70;
-  --danger: #B42318;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --text: #0b0a1b;
+  --muted: #2a2950;
+  --primary: #f49724;
+  --primaryText: #0b0a1b;
+  --accent: #e31b81;
+  --info: #579afd;
+  --border: #e6e8f0;
+}
+
+[data-theme="dark"] {
+  --bg: #0b0a19;
+  --surface: #272454;
+  --text: #f3f4ff;
+  --muted: #c7c9ff;
+  --primary: #f49724;
+  --primaryText: #0b0a1b;
+  --accent: #e31b81;
+  --info: #579afd;
+  --border: #34326a;
 }
 
 /* Base styles */
@@ -52,38 +76,40 @@ html {
 }
 
 body {
-  background-color: var(--onyx);
-  color: var(--porcelain);
+  background-color: var(--bg);
+  color: var(--text);
 }
 
-/* Custom utility classes */
+/* Brand gradient text (Sunset Orange → Gold) */
 .text-gradient-gold {
-  background: linear-gradient(90deg, var(--champagne-gold), var(--soft-gold));
+  background: linear-gradient(90deg, #f8cf1c, #f49724);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
+/* Primary CTA — Sunset Orange, Ink text, 12px radius (color-brand §8) */
 .btn-primary {
-  background-color: var(--aqua-shine);
-  color: var(--jet);
+  background-color: var(--primary);
+  color: var(--primaryText);
   transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
-  box-shadow: 0 0 20px rgba(8, 213, 250, 0.3);
+  box-shadow: 0 0 20px rgba(244, 151, 36, 0.35);
   transform: translateY(-1px);
 }
 
+/* Secondary — transparent + Night Navy border (color-brand §8) */
 .btn-secondary {
   background-color: transparent;
-  border: 1px solid var(--soft-gold);
-  color: var(--porcelain);
+  border: 1px solid #19173b;
+  color: #f3f4ff;
   transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
-  background-color: var(--graphite);
+  background-color: rgba(25, 23, 59, 0.5);
 }
 
 /* Subtle bounce animation for WhatsApp float */
@@ -124,7 +150,6 @@ body {
 
 /* Landscape mode optimizations for mobile devices */
 @media (orientation: landscape) and (max-height: 500px) {
-  /* Reduce vertical spacing in landscape on small-height screens */
   .landscape-compact {
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
@@ -133,7 +158,6 @@ body {
 
 /* iPad-specific adjustments */
 @media (min-width: 768px) and (max-width: 1024px) {
-  /* Ensure touch targets are still comfortable on tablets */
   input, select, textarea, button {
     min-height: 44px;
   }
@@ -153,7 +177,6 @@ body {
     print-color-adjust: exact;
   }
 
-  /* Hide elements that shouldn't print */
   header,
   nav,
   footer,
@@ -161,7 +184,6 @@ body {
     display: none !important;
   }
 
-  /* Show only invoice content */
   #invoice-content {
     position: absolute;
     top: 0;
@@ -172,7 +194,6 @@ body {
     padding: 2rem !important;
   }
 
-  /* Custom print utilities (replaces Tailwind print: variants) */
   .print-p-8 {
     padding: 2rem !important;
   }
@@ -196,7 +217,6 @@ body {
     display: block !important;
   }
 
-  /* Page settings */
   @page {
     size: A4;
     margin: 1cm;
@@ -208,5 +228,3 @@ body {
 .provincia-chart-no-focus *:focus-visible {
   outline: none !important;
 }
-
-
