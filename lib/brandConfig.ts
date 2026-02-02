@@ -21,6 +21,8 @@ export interface BrandConfig {
   instagramUrl: string;
   /** Optional year for "Since YYYY" copy (e.g. "2014"). */
   foundedYear: string;
+  /** Optional image for link preview (OG/Twitter). Use 1200×630; absolute URL or path. Falls back to logoPath. */
+  ogImagePath: string;
 }
 
 /**
@@ -40,9 +42,10 @@ export function getWhatsAppUrl(number: string, message: string): string {
 /** Brand config singleton (env vars evaluated at module load). */
 export const brandConfig: BrandConfig = {
   brandName: process.env.NEXT_PUBLIC_BRAND_NAME ?? "Your Brand",
-  tagline: process.env.NEXT_PUBLIC_BRAND_TAGLINE ?? "Premium Products",
+  tagline: process.env.NEXT_PUBLIC_BRAND_TAGLINE ?? "Tours y Experiencias",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com",
   logoPath: process.env.NEXT_PUBLIC_LOGO_PATH ?? "/logo.png",
+  ogImagePath: process.env.NEXT_PUBLIC_OG_IMAGE ?? "",
   whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "",
   whatsappMessage:
     process.env.NEXT_PUBLIC_WHATSAPP_MESSAGE ??
@@ -57,3 +60,19 @@ export const brandConfig: BrandConfig = {
   instagramUrl: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? "",
   foundedYear: process.env.NEXT_PUBLIC_FOUNDED_YEAR ?? "",
 };
+
+/**
+ * Returns absolute URL for the link-preview image (OG/Twitter).
+ * Crawlers require absolute URLs; relative paths are resolved with siteUrl.
+ * @param imagePath - NEXT_PUBLIC_OG_IMAGE or logo path (relative or absolute).
+ * @param siteUrl - Base site URL.
+ * @returns Absolute URL for the image.
+ */
+export function getAbsoluteOgImageUrl(imagePath: string, siteUrl: string): string {
+  if (!imagePath?.trim()) return "";
+  const path = imagePath.trim();
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  const base = siteUrl.replace(/\/$/, "");
+  const seg = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${seg}`;
+}

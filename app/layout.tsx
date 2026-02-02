@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { brandConfig } from "@/lib/brandConfig";
+import { brandConfig, getAbsoluteOgImageUrl } from "@/lib/brandConfig";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -19,7 +19,11 @@ export const metadataBase = new URL(brandConfig.siteUrl);
  * SEO- and AI-friendly: clear title/description, OG/Twitter, E-E-A-T signals.
  */
 const siteDescription =
-  `${brandConfig.tagline}. Tours y experiencias en República Dominicana. Reserva por WhatsApp. Envíos y coordinación nacional.`;
+  `${brandConfig.tagline}. Tours y experiencias en República Dominicana. Reserva por WhatsApp. Coordinación nacional.`;
+
+/** Absolute URL for link preview (OG/Twitter). Crawlers require absolute URLs. */
+const previewImagePath = brandConfig.ogImagePath || brandConfig.logoPath;
+const absolutePreviewImage = getAbsoluteOgImageUrl(previewImagePath, brandConfig.siteUrl);
 
 export const metadata: Metadata = {
   metadataBase,
@@ -52,7 +56,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: brandConfig.logoPath,
+        url: absolutePreviewImage || brandConfig.logoPath,
         width: 1200,
         height: 630,
         alt: `${brandConfig.brandName} - ${brandConfig.tagline}`,
@@ -63,7 +67,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${brandConfig.brandName} | ${brandConfig.tagline}`,
     description: siteDescription,
-    images: [brandConfig.logoPath],
+    images: [absolutePreviewImage || brandConfig.logoPath],
   },
   icons: { icon: "/favicon.ico", apple: brandConfig.logoPath },
 };
@@ -91,6 +95,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
+        <meta name="apple-mobile-web-app-title" content="Guloyas Tours" />
         <meta name="geo.region" content="DO" />
         <meta name="geo.placename" content="República Dominicana" />
         {/* AI/LLM: concise summary for crawlers and summarizers */}
