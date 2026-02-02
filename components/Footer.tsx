@@ -18,7 +18,6 @@ export function Footer() {
     brandConfig.addressCity && brandConfig.addressCountry
       ? `${brandConfig.addressCity}, ${brandConfig.addressCountry}`
       : brandConfig.addressCity || brandConfig.addressCountry,
-    "Horario: Lun–Vie 8am–5pm",
   ].filter(Boolean);
 
   return (
