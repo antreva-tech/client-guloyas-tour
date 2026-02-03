@@ -1,6 +1,9 @@
 "use client";
 
+import { todayDdMmYyyy } from "@/lib/formatDate";
 import { useState } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 /**
  * Flight reservation request form: departure/arrival airport, date, round-trip.
@@ -9,8 +12,10 @@ import { useState } from "react";
 export function FlightRequestSection() {
   const [departureAirport, setDepartureAirport] = useState("");
   const [arrivalAirport, setArrivalAirport] = useState("");
+  /** YYYY-MM-DD for API; DatePicker displays as DD/MM/YYYY */
   const [travelDate, setTravelDate] = useState("");
   const [isRoundTrip, setIsRoundTrip] = useState(false);
+  const [returnDate, setReturnDate] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -21,6 +26,18 @@ export function FlightRequestSection() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
+    if (!travelDate) {
+      setMessage({ type: "error", text: "Selecciona la fecha de ida." });
+      return;
+    }
+    if (isRoundTrip && !returnDate) {
+      setMessage({ type: "error", text: "Selecciona la fecha de vuelta." });
+      return;
+    }
+    if (isRoundTrip && returnDate && returnDate < travelDate) {
+      setMessage({ type: "error", text: "La fecha de vuelta debe ser igual o posterior a la de ida." });
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/flight-requests", {
@@ -29,8 +46,9 @@ export function FlightRequestSection() {
         body: JSON.stringify({
           departureAirport: departureAirport.trim(),
           arrivalAirport: arrivalAirport.trim(),
-          travelDate: travelDate || null,
+          travelDate,
           isRoundTrip,
+          returnDate: isRoundTrip && returnDate ? returnDate : undefined,
           customerName: customerName.trim() || undefined,
           customerPhone: customerPhone.trim() || undefined,
           customerEmail: customerEmail.trim() || undefined,
@@ -47,6 +65,7 @@ export function FlightRequestSection() {
       setArrivalAirport("");
       setTravelDate("");
       setIsRoundTrip(false);
+      setReturnDate("");
       setCustomerName("");
       setCustomerPhone("");
       setCustomerEmail("");
@@ -106,15 +125,25 @@ export function FlightRequestSection() {
           </div>
           <div>
             <label htmlFor="flight-date" className="block text-sm font-medium text-brand-ink mb-1">
-              Fecha
+              Fecha de ida
             </label>
-            <input
+            <DatePicker
               id="flight-date"
-              type="date"
-              value={travelDate}
-              onChange={(e) => setTravelDate(e.target.value)}
-              required
-              min={new Date().toISOString().slice(0, 10)}
+              selected={travelDate ? new Date(travelDate + "T12:00:00") : null}
+              onChange={(date: Date | null) => {
+                if (!date) {
+                  setTravelDate("");
+                  return;
+                }
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, "0");
+                const d = String(date.getDate()).padStart(2, "0");
+                setTravelDate(`${y}-${m}-${d}`);
+              }}
+              dateFormat="dd/MM/yyyy"
+              placeholderText={todayDdMmYyyy()}
+              minDate={new Date()}
+              isClearable
               className="w-full border border-brand-border rounded-lg px-3 py-2 text-jet text-sm"
             />
           </div>
@@ -123,13 +152,46 @@ export function FlightRequestSection() {
               id="flight-roundtrip"
               type="checkbox"
               checked={isRoundTrip}
-              onChange={(e) => setIsRoundTrip(e.target.checked)}
+              onChange={(e) => {
+                setIsRoundTrip(e.target.checked);
+                if (!e.target.checked) setReturnDate("");
+              }}
               className="rounded border-brand-border"
             />
             <label htmlFor="flight-roundtrip" className="text-sm text-brand-ink">
               Ida y vuelta
             </label>
           </div>
+          {isRoundTrip && (
+            <div>
+              <label htmlFor="flight-return-date" className="block text-sm font-medium text-brand-ink mb-1">
+                Fecha de vuelta
+              </label>
+              <DatePicker
+                id="flight-return-date"
+                selected={returnDate ? new Date(returnDate + "T12:00:00") : null}
+                onChange={(date: Date | null) => {
+                  if (!date) {
+                    setReturnDate("");
+                    return;
+                  }
+                  const y = date.getFullYear();
+                  const m = String(date.getMonth() + 1).padStart(2, "0");
+                  const d = String(date.getDate()).padStart(2, "0");
+                  setReturnDate(`${y}-${m}-${d}`);
+                }}
+                dateFormat="dd/MM/yyyy"
+                placeholderText={todayDdMmYyyy()}
+                minDate={
+                  travelDate
+                    ? new Date(travelDate + "T12:00:00")
+                    : new Date()
+                }
+                isClearable
+                className="w-full border border-brand-border rounded-lg px-3 py-2 text-jet text-sm"
+              />
+            </div>
+          )}
           <div className="grid sm:grid-cols-2 gap-4 pt-2">
             <div>
               <label htmlFor="flight-name" className="block text-sm font-medium text-brand-ink mb-1">

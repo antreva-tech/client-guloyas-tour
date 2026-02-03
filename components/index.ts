@@ -10,6 +10,7 @@ export { CatalogClient } from "./CatalogClient";
 export { ProductCard, type Product } from "./ProductCard";
 export { Shipping } from "./Shipping";
 export { Contact } from "./Contact";
+export { SocialMediaSection } from "./SocialMediaSection";
 export { Footer } from "./Footer";
 export { WhatsAppFloat } from "./WhatsAppFloat";
 export { SeoStructuredData, type FaqItem } from "./SeoStructuredData";

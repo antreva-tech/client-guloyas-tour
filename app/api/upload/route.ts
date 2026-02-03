@@ -51,13 +51,15 @@ function verifyMagicBytes(buffer: Buffer, mimeType: string): boolean {
 /**
  * Generates a unique filename with timestamp and random string.
  * @param originalName - The original filename.
- * @returns A unique filename.
+ * @param prefix - Optional folder prefix (e.g. "hotel-offers"); defaults to "products".
+ * @returns A unique filename path.
  */
-function generateUniqueFilename(originalName: string): string {
+function generateUniqueFilename(originalName: string, prefix?: string): string {
   const ext = originalName.split(".").pop()?.toLowerCase() || "jpg";
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
-  return `products/${timestamp}-${random}.${ext}`;
+  const folder = prefix && /^[a-z0-9-]+$/.test(prefix) ? prefix : "products";
+  return `${folder}/${timestamp}-${random}.${ext}`;
 }
 
 /**
@@ -79,6 +81,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
+    const prefix = (formData.get("prefix") as string)?.trim();
 
     if (!file) {
       return NextResponse.json(
@@ -115,8 +118,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique filename for blob storage
-    const pathname = generateUniqueFilename(file.name);
+    // Generate unique filename for blob storage (optional prefix: hotel-offers, etc.)
+    const pathname = generateUniqueFilename(file.name, prefix);
 
     // Upload to Vercel Blob
     const blob = await put(pathname, buffer, {

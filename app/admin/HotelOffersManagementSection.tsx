@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export interface HotelOfferRow {
   id: string;
@@ -8,6 +8,7 @@ export interface HotelOfferRow {
   description: string;
   linkUrl: string;
   imageUrl: string | null;
+  price: number | null;
   validFrom: string | null;
   validUntil: string | null;
   sequence: number;
@@ -30,11 +31,14 @@ export function HotelOffersManagementSection() {
     description: "",
     linkUrl: "",
     imageUrl: "",
+    price: "" as number | "",
     validFrom: "",
     validUntil: "",
     sequence: 0,
     isActive: true,
   });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const loadOffers = useCallback(async () => {
     setLoading(true);
@@ -63,6 +67,7 @@ export function HotelOffersManagementSection() {
       description: "",
       linkUrl: "",
       imageUrl: "",
+      price: "",
       validFrom: "",
       validUntil: "",
       sequence: 0,
@@ -78,11 +83,37 @@ export function HotelOffersManagementSection() {
       description: offer.description,
       linkUrl: offer.linkUrl,
       imageUrl: offer.imageUrl || "",
+      price: offer.price ?? "",
       validFrom: offer.validFrom ? offer.validFrom.slice(0, 16) : "",
       validUntil: offer.validUntil ? offer.validUntil.slice(0, 16) : "",
       sequence: offer.sequence,
       isActive: offer.isActive,
     });
+  };
+
+  /** Uploads image to /api/upload with prefix hotel-offers and sets form.imageUrl. */
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("prefix", "hotel-offers");
+      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Error al subir");
+      }
+      const data = await res.json();
+      if (data.url) setForm((f) => ({ ...f, imageUrl: data.url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al subir imagen");
+    } finally {
+      setUploadingImage(false);
+      e.target.value = "";
+    }
   };
 
   const closeForm = () => {
@@ -98,6 +129,7 @@ export function HotelOffersManagementSection() {
       description: form.description,
       linkUrl: form.linkUrl,
       imageUrl: form.imageUrl || null,
+      price: form.price === "" || form.price === undefined ? null : Number(form.price),
       validFrom: form.validFrom ? new Date(form.validFrom).toISOString() : null,
       validUntil: form.validUntil ? new Date(form.validUntil).toISOString() : null,
       sequence: form.sequence,
@@ -208,12 +240,54 @@ export function HotelOffersManagementSection() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-jet/70 mb-1">URL de imagen (opcional)</label>
+            <label className="block text-xs font-medium text-jet/70 mb-1">Imagen (opcional)</label>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="bg-jet/10 text-jet px-3 py-2 rounded-lg text-sm hover:bg-jet/20 disabled:opacity-50"
+                >
+                  {uploadingImage ? "Subiendo…" : "Subir imagen"}
+                </button>
+                <span className="text-jet/60 text-xs">o pega URL:</span>
+              </div>
+              <input
+                type="url"
+                value={form.imageUrl}
+                onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                placeholder="https://..."
+                className="w-full border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm"
+              />
+              {form.imageUrl ? (
+                <div className="relative h-24 w-40 rounded-lg overflow-hidden bg-jet/5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={form.imageUrl} alt="" className="h-full w-full object-cover" />
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-jet/70 mb-1">Precio (RD$, opcional)</label>
             <input
-              type="url"
-              value={form.imageUrl}
-              onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-              className="w-full border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm"
+              type="number"
+              min={0}
+              step={1}
+              value={form.price === "" ? "" : form.price}
+              onChange={(e) => {
+                const v = e.target.value;
+                setForm((f) => ({ ...f, price: v === "" ? "" : (parseInt(v, 10) || 0) }));
+              }}
+              placeholder="Ej. 1500"
+              className="w-full border border-gold-200/50 rounded-lg px-3 py-2 text-jet text-sm max-w-[12rem]"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -288,6 +362,7 @@ export function HotelOffersManagementSection() {
                 <p className="font-medium text-jet truncate">{offer.title}</p>
                 <p className="text-xs text-jet/60">
                   Orden {offer.sequence} · {offer.isActive ? "Activa" : "Inactiva"}
+                  {offer.price != null ? ` · RD$ ${offer.price.toLocaleString()}` : ""}
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">

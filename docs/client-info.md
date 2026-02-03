@@ -11,7 +11,7 @@
 |-------|-------|
 | **Legal name** | Guloyas Tours SRL |
 | **RNC** | 132-93225-2 |
-| **Address** | C/ Casimira Hereaux 4, Enriquillo, San Pedro de Macorís DR 21000 |
+| **Address** | Avenida Mauricio Báez #19, Sector los 4 Caminos, San Pedro de Macorís DR 21000 |
 | **Email** | guloyastours@gmail.com |
 | **Phone** | +1 (829) 718-8926 / +1 (809) 399-4401 |
 
@@ -24,7 +24,7 @@ Use these values when configuring `.env` for Guloyas Tours:
 | Variable | Value |
 |----------|-------|
 | `NEXT_PUBLIC_CONTACT_EMAIL` | guloyastours@gmail.com |
-| `NEXT_PUBLIC_ADDRESS_STREET` | C/ Casimira Hereaux 4, Enriquillo |
+| `NEXT_PUBLIC_ADDRESS_STREET` | Avenida Mauricio Báez #19, Sector los 4 Caminos |
 | `NEXT_PUBLIC_ADDRESS_CITY` | San Pedro de Macorís DR 21000 |
 | `NEXT_PUBLIC_ADDRESS_COUNTRY` | Dominican Republic |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | 18297188926 *(or 18093994401)* |

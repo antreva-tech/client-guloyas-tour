@@ -8,6 +8,7 @@ const CreateFlightRequestSchema = z.object({
   arrivalAirport: z.string().min(1, "Aeropuerto de llegada requerido"),
   travelDate: z.string().min(1, "Fecha requerida"),
   isRoundTrip: z.boolean().default(false),
+  returnDate: z.string().optional(),
   customerName: z.string().optional(),
   customerPhone: z.string().optional(),
   customerEmail: z.string().email().optional().or(z.literal("")),
@@ -33,9 +34,20 @@ export async function POST(request: NextRequest) {
     const travelDate = new Date(data.travelDate);
     if (Number.isNaN(travelDate.getTime())) {
       return NextResponse.json(
-        { error: "Fecha inválida" },
+        { error: "Fecha de ida inválida" },
         { status: 400 }
       );
+    }
+
+    let returnDate: Date | null = null;
+    if (data.isRoundTrip && data.returnDate) {
+      returnDate = new Date(data.returnDate);
+      if (Number.isNaN(returnDate.getTime())) {
+        return NextResponse.json(
+          { error: "Fecha de vuelta inválida" },
+          { status: 400 }
+        );
+      }
     }
 
     const flightRequest = await db.flightRequest.create({
@@ -44,6 +56,7 @@ export async function POST(request: NextRequest) {
         arrivalAirport: data.arrivalAirport.trim(),
         travelDate,
         isRoundTrip: data.isRoundTrip,
+        returnDate,
         customerName: data.customerName?.trim() || null,
         customerPhone: data.customerPhone?.trim() || null,
         customerEmail: data.customerEmail?.trim() || null,

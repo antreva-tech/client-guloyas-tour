@@ -8,6 +8,7 @@ export interface HotelOfferItem {
   description: string;
   linkUrl: string;
   imageUrl: string | null;
+  price: number | null;
   validFrom: string | null;
   validUntil: string | null;
   sequence: number;
@@ -69,6 +70,11 @@ export function HotelOffersSection() {
                 <h3 className="font-semibold text-brand-ink text-lg mb-2 group-hover:text-brand-sunset">
                   {offer.title}
                 </h3>
+                {offer.price != null && (
+                  <p className="text-brand-sunset font-semibold text-sm mb-2">
+                    RD$ {offer.price.toLocaleString()}
+                  </p>
+                )}
                 <p className="text-brand-muted text-sm line-clamp-2 mb-3">
                   {offer.description}
                 </p>

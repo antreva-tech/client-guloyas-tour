@@ -8,6 +8,7 @@ const CreateHotelOfferSchema = z.object({
   description: z.string().min(1, "Descripción requerida"),
   linkUrl: z.string().url("URL inválida"),
   imageUrl: z.string().url().optional().nullable(),
+  price: z.number().int().min(0).optional().nullable(), // whole units (e.g. 1500 = RD$ 1,500)
   validFrom: z.string().datetime().optional().nullable(),
   validUntil: z.string().datetime().optional().nullable(),
   sequence: z.number().int().optional(),
@@ -82,6 +83,7 @@ export async function POST(request: NextRequest) {
         description: data.description,
         linkUrl: data.linkUrl,
         imageUrl: data.imageUrl ?? null,
+        price: data.price ?? null,
         validFrom: data.validFrom ? new Date(data.validFrom) : null,
         validUntil: data.validUntil ? new Date(data.validUntil) : null,
         sequence: data.sequence ?? 0,

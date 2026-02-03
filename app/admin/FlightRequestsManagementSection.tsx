@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { formatDate as formatDateUtil, formatDateTime } from "@/lib/formatDate";
 
 export interface FlightRequestRow {
   id: string;
@@ -8,6 +9,7 @@ export interface FlightRequestRow {
   arrivalAirport: string;
   travelDate: string;
   isRoundTrip: boolean;
+  returnDate: string | null;
   customerName: string | null;
   customerPhone: string | null;
   customerEmail: string | null;
@@ -34,11 +36,6 @@ export function FlightRequestsManagementSection() {
       .finally(() => setLoading(false));
   }, []);
 
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString("es-DO", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
 
   return (
     <div className="space-y-4">
@@ -72,12 +69,16 @@ export function FlightRequestsManagementSection() {
             <tbody>
               {requests.map((r) => (
                 <tr key={r.id} className="border-t border-gold-200/50">
-                  <td className="p-3 text-jet/80">{formatDate(r.createdAt)}</td>
+                  <td className="p-3 text-jet/80">{formatDateTime(r.createdAt)}</td>
                   <td className="p-3">{r.departureAirport}</td>
                   <td className="p-3">{r.arrivalAirport}</td>
                   <td className="p-3">
-                    {new Date(r.travelDate).toLocaleDateString("es-DO")}
-                    {r.isRoundTrip ? " (ida y vuelta)" : ""}
+                    {formatDateUtil(r.travelDate)}
+                    {r.isRoundTrip && r.returnDate
+                      ? ` → ${formatDateUtil(r.returnDate)} (ida y vuelta)`
+                      : r.isRoundTrip
+                        ? " (ida y vuelta)"
+                        : ""}
                   </td>
                   <td className="p-3 text-jet/80">
                     {[r.customerName, r.customerPhone, r.customerEmail]

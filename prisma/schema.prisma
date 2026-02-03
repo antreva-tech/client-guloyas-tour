@@ -155,17 +155,18 @@ model NewsPost {
 
 /// Hotel offer for the public "Ofertas de hoteles" section. Admin-managed.
 model HotelOffer {
-  id         String    @id @default(cuid())
-  title      String
+  id          String    @id @default(cuid())
+  title       String
   description String
-  linkUrl    String
-  imageUrl   String?
-  validFrom  DateTime?
-  validUntil DateTime?
-  sequence   Int       @default(0)
-  isActive   Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  linkUrl     String
+  imageUrl    String?
+  price       Int?      /// Price in whole units (e.g. 1500 = RD$ 1,500); optional.
+  validFrom   DateTime?
+  validUntil  DateTime?
+  sequence    Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([isActive, sequence])
   @@map("hotel_offers")
@@ -173,16 +174,17 @@ model HotelOffer {
 
 /// Flight reservation request from the public form. Stored for follow-up; no external booking API.
 model FlightRequest {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   departureAirport  String
   arrivalAirport    String
   travelDate        DateTime
-  isRoundTrip       Boolean  @default(false)
+  isRoundTrip       Boolean   @default(false)
+  returnDate        DateTime? /// Return date when isRoundTrip is true
   customerName      String?
   customerPhone     String?
   customerEmail     String?
   notes             String?
-  createdAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
 
   @@index([createdAt])
   @@map("flight_requests")

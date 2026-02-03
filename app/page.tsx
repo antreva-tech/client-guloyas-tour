@@ -6,7 +6,6 @@ import {
   Catalog,
   NewsSection,
   HotelOffersSection,
-  FlightRequestSection,
   Shipping,
   Contact,
   Footer,
@@ -75,7 +74,6 @@ export default async function Home() {
         <About />
         <NewsSection />
         <HotelOffersSection />
-        <FlightRequestSection />
         <Shipping />
         <Contact />
       </main>

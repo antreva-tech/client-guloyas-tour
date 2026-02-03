@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { throttle } from "@/lib/throttle";
 import { brandConfig } from "@/lib/brandConfig";
 
@@ -20,13 +21,17 @@ export function Header() {
   const [isEntered, setIsEntered] = useState(false);
   const menuPanelRef = useRef<HTMLElement>(null);
 
+  const pathname = usePathname();
+  /** When not on home, section links must go to /#section so the main site scrolls there. */
+  const sectionBase = pathname === "/" ? "" : "/";
+
   const navLinks = [
-    { href: "#productos", label: "Productos" },
-    { href: "#nosotros", label: "Nosotros" },
+    { href: `${sectionBase}#productos`, label: "Productos" },
+    { href: `${sectionBase}#nosotros`, label: "Nosotros" },
     { href: "/noticias", label: "Noticias" },
-    { href: "#reserva-vuelo", label: "Reserva de vuelo" },
-    { href: "#reservar", label: "Cómo reservar" },
-    { href: "#contacto", label: "Contacto" },
+    { href: "/reserva-vuelo", label: "Reserva de vuelo" },
+    { href: `${sectionBase}#reservar`, label: "Cómo reservar" },
+    { href: `${sectionBase}#contacto`, label: "Contacto" },
   ];
 
   const stateRef = useRef({ isMenuOpen, isClosing });
@@ -129,7 +134,7 @@ export function Header() {
               </a>
             ))}
             <a
-              href="#contacto"
+              href={`${sectionBase}#contacto`}
               className="btn-primary px-4 py-2 rounded-full text-sm font-semibold"
             >
               Comprar Ahora
@@ -218,14 +223,14 @@ export function Header() {
             ))}
             <div className="mt-6 flex flex-col gap-3">
               <a
-                href="#productos"
+                href={`${sectionBase}#productos`}
                 onClick={startCloseMenu}
                 className="py-4 rounded-full text-center text-lg font-semibold touch-manipulation bg-brand-sunset text-brand-ink"
               >
                 Ver Catálogo
               </a>
               <a
-                href="#contacto"
+                href={`${sectionBase}#contacto`}
                 onClick={startCloseMenu}
                 className="py-4 rounded-full text-center text-lg font-semibold touch-manipulation border border-brand-navy bg-night-600 text-night-text"
               >

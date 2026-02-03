@@ -44,6 +44,17 @@ export function parseDdMmYyyyToYyyyMmDd(input: string): string {
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
+/**
+ * Returns today's date as DD/MM/YYYY (for placeholders and min-date display).
+ */
+export function todayDdMmYyyy(): string {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 export function formatDateTime(date: Date | string | null | undefined): string {
   if (date == null) return "";
   const d = typeof date === "string" ? new Date(date) : date;

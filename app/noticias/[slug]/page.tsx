@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { brandConfig } from "@/lib/brandConfig";
+import { formatDate } from "@/lib/formatDate";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -33,7 +34,7 @@ export default async function NoticiaSlugPage({ params }: PageProps) {
   if (!post) notFound();
 
   return (
-    <main className="min-h-screen bg-brand-canvas">
+    <main>
       <article className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Link href="/noticias" className="text-brand-sunset hover:underline text-sm mb-6 inline-block">
           ← Noticias
@@ -47,9 +48,7 @@ export default async function NoticiaSlugPage({ params }: PageProps) {
               dateTime={new Date(post.publishedAt).toISOString()}
               className="text-brand-muted text-sm mt-2 block"
             >
-              {new Date(post.publishedAt).toLocaleDateString("es-DO", {
-                dateStyle: "long",
-              })}
+              {formatDate(post.publishedAt)}
             </time>
           )}
         </header>
@@ -58,7 +57,7 @@ export default async function NoticiaSlugPage({ params }: PageProps) {
         </div>
         <p className="mt-10">
           <Link href="/" className="text-brand-sunset hover:underline">
-            ← Volver al inicio
+            ← Inicio
           </Link>
         </p>
       </article>

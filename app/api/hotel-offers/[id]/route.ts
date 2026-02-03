@@ -8,6 +8,7 @@ const UpdateHotelOfferSchema = z.object({
   description: z.string().min(1).optional(),
   linkUrl: z.string().url().optional(),
   imageUrl: z.string().url().optional().nullable(),
+  price: z.number().int().min(0).optional().nullable(),
   validFrom: z.string().datetime().optional().nullable(),
   validUntil: z.string().datetime().optional().nullable(),
   sequence: z.number().int().optional(),
@@ -42,6 +43,7 @@ export async function PATCH(
       description?: string;
       linkUrl?: string;
       imageUrl?: string | null;
+      price?: number | null;
       validFrom?: Date | null;
       validUntil?: Date | null;
       sequence?: number;
@@ -51,6 +53,7 @@ export async function PATCH(
     if (data.description !== undefined) update.description = data.description;
     if (data.linkUrl !== undefined) update.linkUrl = data.linkUrl;
     if (data.imageUrl !== undefined) update.imageUrl = data.imageUrl;
+    if (data.price !== undefined) update.price = data.price;
     if (data.validFrom !== undefined) update.validFrom = data.validFrom ? new Date(data.validFrom) : null;
     if (data.validUntil !== undefined) update.validUntil = data.validUntil ? new Date(data.validUntil) : null;
     if (data.sequence !== undefined) update.sequence = data.sequence;

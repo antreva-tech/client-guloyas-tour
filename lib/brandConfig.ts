@@ -19,6 +19,8 @@ export interface BrandConfig {
   addressCountry: string;
   instagramHandle: string;
   instagramUrl: string;
+  tiktokHandle: string;
+  tiktokUrl: string;
   /** Optional year for "Since YYYY" copy (e.g. "2014"). */
   foundedYear: string;
   /** Optional image for link preview (OG/Twitter). Use 1200×630; absolute URL or path. Falls back to logoPath. */
@@ -70,6 +72,8 @@ export const brandConfig: BrandConfig = {
   addressCountry: process.env.NEXT_PUBLIC_ADDRESS_COUNTRY ?? "",
   instagramHandle: process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE ?? "",
   instagramUrl: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? "",
+  tiktokHandle: process.env.NEXT_PUBLIC_TIKTOK_HANDLE ?? "",
+  tiktokUrl: process.env.NEXT_PUBLIC_TIKTOK_URL ?? "",
   foundedYear: process.env.NEXT_PUBLIC_FOUNDED_YEAR ?? "",
 };
 

@@ -16,6 +16,7 @@ import { UNLIMITED_STOCK } from "@/lib/validation";
 import { formatDateTime } from "@/lib/formatDate";
 import { formatPhoneForDisplay } from "@/lib/phone";
 import { canSeeResumen, canSeeProducts, canDeleteVoidedInvoices } from "@/lib/permissions";
+import { AdminNav } from "./AdminNav";
 import { NewsManagementSection } from "./NewsManagementSection";
 import { HotelOffersManagementSection } from "./HotelOffersManagementSection";
 import { FlightRequestsManagementSection } from "./FlightRequestsManagementSection";
@@ -249,20 +250,6 @@ export function AdminDashboard({
     setCompletedSale(null);
   }
 
-  /**
-   * Applies styling for the admin view tabs.
-   * @param view - The view that the button represents.
-   */
-  function getViewButtonClass(view: AdminView) {
-    const isActive = activeView === view;
-    return [
-      "px-3 py-2 rounded-lg text-xs font-medium transition-colors",
-      isActive
-        ? "bg-aqua-700 text-white"
-        : "bg-aqua-700/10 text-aqua-700 hover:bg-aqua-700/20",
-    ].join(" ");
-  }
-
   useEffect(() => {
     closeOverlays();
   }, [activeView]);
@@ -273,79 +260,13 @@ export function AdminDashboard({
 
   return (
     <>
-    <div className="space-y-4 sm:space-y-6 tablet-lg:space-y-8">
-      {/* Header with view tabs - responsive for all orientations */}
-      <div className="flex flex-col gap-3 landscape:flex-row landscape:items-center landscape:justify-between tablet:flex-row tablet:items-center tablet:justify-between">
-        <div>
-          <h2 className="text-lg tablet:text-xl font-semibold text-jet">
-            Panel Administrativo
-          </h2>
-          <p className="text-jet/50 text-xs mt-0.5">
-            Cambia entre vistas para organizar el trabajo
-          </p>
-        </div>
-        {/* View tabs - supervisor sees only Ventas */}
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 tablet:overflow-visible tablet:flex-wrap">
-          {canSeeResumen(role) && (
-            <button
-              type="button"
-              onClick={() => setActiveView("overview")}
-              className={`${getViewButtonClass("overview")} whitespace-nowrap flex-shrink-0`}
-            >
-              Resumen
-            </button>
-          )}
-          {canSeeProducts(role) && (
-            <button
-              type="button"
-              onClick={() => setActiveView("products")}
-              className={`${getViewButtonClass("products")} whitespace-nowrap flex-shrink-0`}
-            >
-              Tours
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setActiveView("sales")}
-            className={`${getViewButtonClass("sales")} whitespace-nowrap flex-shrink-0`}
-          >
-            Reservas
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveView("messages")}
-            className={`${getViewButtonClass("messages")} whitespace-nowrap flex-shrink-0`}
-          >
-            Mensajes
-          </button>
-          {(role === "admin" || role === "support") && (
-            <>
-              <button
-                type="button"
-                onClick={() => setActiveView("news")}
-                className={`${getViewButtonClass("news")} whitespace-nowrap flex-shrink-0`}
-              >
-                Noticias
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveView("hotelOffers")}
-                className={`${getViewButtonClass("hotelOffers")} whitespace-nowrap flex-shrink-0`}
-              >
-                Ofertas hoteles
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveView("flightRequests")}
-                className={`${getViewButtonClass("flightRequests")} whitespace-nowrap flex-shrink-0`}
-              >
-                Reservas vuelo
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
+    <div className="flex flex-col md:flex-row md:gap-6 md:items-start">
+      <AdminNav
+        activeView={activeView}
+        onViewChange={setActiveView}
+        role={role}
+      />
+      <div className="flex-1 min-w-0 w-full space-y-4 sm:space-y-6 tablet-lg:space-y-8 mt-4 md:mt-0">
       {/* KPI Section */}
       {activeView === "overview" && (
         <div className="space-y-4">
@@ -639,6 +560,7 @@ export function AdminDashboard({
       {activeView === "flightRequests" && (role === "admin" || role === "support") && (
         <FlightRequestsManagementSection />
       )}
+      </div>
     </div>
 
     {confirmModal && (

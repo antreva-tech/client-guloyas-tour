@@ -69,6 +69,13 @@ export interface Dictionary {
     whatsappSubtext: string;
     startChat: string;
   };
+  social: {
+    sectionLabel: string;
+    headline: string;
+    subtext: string;
+    followInstagram: string;
+    followTikTok: string;
+  };
   footer: {
     description: string;
     links: string;
@@ -141,6 +148,13 @@ const esBase: Omit<Dictionary, "common" | "hero" | "footer"> = {
     whatsappCta: "Escríbenos por WhatsApp",
     whatsappSubtext: "Respuesta rápida • Atención personalizada • Reservas directas",
     startChat: "Iniciar Chat",
+  },
+  social: {
+    sectionLabel: "Redes sociales",
+    headline: "Síguenos en redes",
+    subtext: "Fotos, videos y novedades de nuestros tours.",
+    followInstagram: "Seguir en Instagram",
+    followTikTok: "Seguir en TikTok",
   },
 };
 
@@ -219,6 +233,13 @@ const enBase: Omit<Dictionary, "common" | "hero" | "footer"> = {
     whatsappCta: "Message us on WhatsApp",
     whatsappSubtext: "Fast response • Personalized attention • Direct bookings",
     startChat: "Start Chat",
+  },
+  social: {
+    sectionLabel: "Social media",
+    headline: "Follow us on social",
+    subtext: "Photos, videos and updates from our tours.",
+    followInstagram: "Follow on Instagram",
+    followTikTok: "Follow on TikTok",
   },
 };
 

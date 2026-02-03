@@ -8,7 +8,7 @@ Admin dashboard and public catalog for **Guloyas Tours SRL** — tourism agency 
 |-------|--------|
 | **Legal name** | Guloyas Tours SRL |
 | **RNC** | 132-93225-2 |
-| **Address** | C/ Casimira Hereaux 4, Enriquillo, San Pedro de Macorís DR 21000 |
+| **Address** | Avenida Mauricio Báez #19, Sector los 4 Caminos, San Pedro de Macorís DR 21000 |
 | **Email** | guloyastours@gmail.com |
 | **Phone** | +1 (829) 718-8926 / +1 (809) 399-4401 |
 
