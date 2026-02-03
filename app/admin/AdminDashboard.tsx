@@ -2177,6 +2177,9 @@ function SaleForm({
   const [notes, setNotes] = useState("");
   const [isPaid, setIsPaid] = useState(false);
 
+  /** Single abono (deposit) for the whole reservation; distributed across lines on submit. */
+  const [reservationAbono, setReservationAbono] = useState(0);
+
   // Form state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2205,8 +2208,25 @@ function SaleForm({
   }, []);
 
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-  const totalAbono = items.reduce((sum, item) => sum + (item.abono || 0), 0);
-  const totalPendiente = items.reduce((sum, item) => sum + (item.pendiente || 0), 0);
+  const totalAbono = Math.min(reservationAbono, subtotal);
+  const totalPendiente = Math.max(0, subtotal - totalAbono);
+
+  /**
+   * Distributes a single abono amount across line totals (each line gets up to its total).
+   * @param amount - Total abono for the reservation.
+   * @param totals - Per-line totals.
+   * @returns Per-line abono amounts that sum to min(amount, sum(totals)).
+   */
+  function distributeAbono(amount: number, totals: number[]): number[] {
+    const result = totals.map(() => 0);
+    let rem = Math.min(amount, totals.reduce((s, t) => s + t, 0));
+    for (let i = 0; i < totals.length && rem > 0; i++) {
+      const put = Math.min(rem, totals[i]);
+      result[i] = put;
+      rem -= put;
+    }
+    return result;
+  }
 
   /**
    * Adds a product to the sale. When unitPrice is provided (e.g. special offer), uses that price;
@@ -2226,8 +2246,7 @@ function SaleForm({
             if (i.productId !== productId || i.unitPrice !== price) return i;
             const newQty = i.quantity + 1;
             const newTotal = newQty * i.unitPrice;
-            const abono = Math.min(i.abono ?? 0, newTotal);
-            return { ...i, quantity: newQty, total: newTotal, abono, pendiente: Math.max(0, newTotal - abono) };
+            return { ...i, quantity: newQty, total: newTotal };
           })
         );
       }
@@ -2245,8 +2264,6 @@ function SaleForm({
           unitPrice: price,
           total: price,
           priceLabel,
-          abono: 0,
-          pendiente: price, // total - abono
         },
       ]);
       // Pre-fill Fecha del Tour from the selected tour when empty
@@ -2270,28 +2287,13 @@ function SaleForm({
       items.map((i) => {
         if (i.productId !== productId || i.unitPrice !== unitPrice) return i;
         const total = quantity * i.unitPrice;
-        const abono = Math.min(i.abono ?? 0, total);
-        return { ...i, quantity, total, abono, pendiente: Math.max(0, total - abono) };
+        return { ...i, quantity, total };
       })
     );
   }
 
   /**
-   * Updates abono (partial payment) for an item. Matches by productId + unitPrice so adult and kid lines stay separate.
-   * Pendiente is auto-calculated as total - abono.
-   */
-  function handleUpdateAbono(productId: string, unitPrice: number, abono: number) {
-    setItems(
-      items.map((i) => {
-        if (i.productId !== productId || i.unitPrice !== unitPrice) return i;
-        const capped = Math.min(i.total, Math.max(0, abono));
-        return { ...i, abono: capped, pendiente: Math.max(0, i.total - capped) };
-      })
-    );
-  }
-
-  /**
-   * Updates unit price for an item; recalculates total and pendiente. Matches by productId + current unitPrice so adult and kid lines stay separate.
+   * Updates unit price for an item; recalculates total. Matches by productId + current unitPrice so adult and kid lines stay separate.
    */
   function handleUpdateUnitPrice(productId: string, currentUnitPrice: number, newUnitPrice: number) {
     const value = Math.max(0, newUnitPrice);
@@ -2299,8 +2301,7 @@ function SaleForm({
       items.map((i) => {
         if (i.productId !== productId || i.unitPrice !== currentUnitPrice) return i;
         const total = i.quantity * value;
-        const abono = Math.min(i.abono ?? 0, total);
-        return { ...i, unitPrice: value, total, abono, pendiente: Math.max(0, total - abono) };
+        return { ...i, unitPrice: value, total };
       })
     );
   }
@@ -2382,17 +2383,21 @@ function SaleForm({
     setFieldErrors(new Set());
 
     try {
+      const abonoPerLine = distributeAbono(totalAbono, items.map((i) => i.total));
       const res = await fetch("/api/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: items.map((i) => ({
-            tourId: i.productId,
-            quantity: i.quantity,
-            total: i.total,
-            abono: i.abono || undefined,
-            pendiente: i.pendiente || undefined,
-          })),
+          items: items.map((i, idx) => {
+            const abono = abonoPerLine[idx] ?? 0;
+            return {
+              tourId: i.productId,
+              quantity: i.quantity,
+              total: i.total,
+              abono: abono > 0 ? abono : undefined,
+              pendiente: i.total - abono,
+            };
+          }),
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
           cedula: cedula.trim(),
@@ -2581,34 +2586,40 @@ function SaleForm({
                       </p>
                     </div>
 
-                    {/* Abono and Pendiente inputs */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs text-jet/60 mb-1">Abono ($)</label>
-                        <input
-                          type="number"
-                          value={item.abono || ""}
-                          onChange={(e) => handleUpdateAbono(item.productId, item.unitPrice, parseInt(e.target.value) || 0)}
-                          className="w-full bg-white border border-gold-200/50 rounded px-2 py-1.5 text-jet text-sm focus:outline-none focus:ring-1 focus:ring-aqua-500"
-                          placeholder="0"
-                          min="0"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-jet/60 mb-1">Pendiente ($)</label>
-                        <input
-                          type="number"
-                          value={item.pendiente ?? ""}
-                          readOnly
-                          className="w-full bg-pearl/70 border border-gold-200/50 rounded px-2 py-1.5 text-jet text-sm cursor-default"
-                          placeholder="0"
-                          title="Calculado: Total − Abono"
-                        />
-                      </div>
-                    </div>
                   </div>
                 );
               })
+            )}
+
+            {/* Single Abono for the whole reservation */}
+            {items.length > 0 && (
+              <div className="mt-4 p-3 bg-pearl rounded-lg border border-gold-200/50">
+                <p className="text-xs font-medium text-jet/70 uppercase tracking-wider mb-2">Abono de la reserva</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-jet/60 mb-1">Abono (RD$)</label>
+                    <input
+                      type="number"
+                      value={reservationAbono || ""}
+                      onChange={(e) => setReservationAbono(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full bg-white border border-gold-200/50 rounded px-2 py-1.5 text-jet text-sm focus:outline-none focus:ring-1 focus:ring-aqua-500"
+                      placeholder="0"
+                      min={0}
+                      max={subtotal}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-jet/60 mb-1">Pendiente (RD$)</label>
+                    <input
+                      type="number"
+                      value={totalPendiente}
+                      readOnly
+                      className="w-full bg-pearl/70 border border-gold-200/50 rounded px-2 py-1.5 text-jet text-sm cursor-default"
+                      title="Calculado: Total − Abono"
+                    />
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

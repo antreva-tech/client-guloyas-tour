@@ -73,55 +73,13 @@ const Icons = {
  */
 function getNavItems(role: SessionRole): NavItem[] {
   const items: NavItem[] = [
-    {
-      id: "overview",
-      label: "Resumen",
-      shortLabel: "Resumen",
-      icon: Icons.overview,
-      show: canSeeResumen,
-    },
-    {
-      id: "products",
-      label: "Tours",
-      shortLabel: "Tours",
-      icon: Icons.products,
-      show: canSeeProducts,
-    },
-    {
-      id: "sales",
-      label: "Reservas",
-      shortLabel: "Reservas",
-      icon: Icons.sales,
-      show: () => true,
-    },
-    {
-      id: "messages",
-      label: "Mensajes",
-      shortLabel: "Mensajes",
-      icon: Icons.messages,
-      show: () => true,
-    },
-    {
-      id: "news",
-      label: "Noticias",
-      shortLabel: "Noticias",
-      icon: Icons.news,
-      show: (r) => r === "admin" || r === "support",
-    },
-    {
-      id: "hotelOffers",
-      label: "Ofertas hoteles",
-      shortLabel: "Hoteles",
-      icon: Icons.hotelOffers,
-      show: (r) => r === "admin" || r === "support",
-    },
-    {
-      id: "flightRequests",
-      label: "Reservas vuelo",
-      shortLabel: "Vuelo",
-      icon: Icons.flightRequests,
-      show: (r) => r === "admin" || r === "support",
-    },
+    { id: "overview", label: "Resumen", shortLabel: "Resumen", icon: Icons.overview, show: canSeeResumen },
+    { id: "products", label: "Tours", shortLabel: "Tours", icon: Icons.products, show: canSeeProducts },
+    { id: "hotelOffers", label: "Ofertas Hoteles", shortLabel: "Hoteles", icon: Icons.hotelOffers, show: (r) => r === "admin" || r === "support" },
+    { id: "flightRequests", label: "Reservas Vuelo", shortLabel: "Vuelo", icon: Icons.flightRequests, show: (r) => r === "admin" || r === "support" },
+    { id: "sales", label: "Reservas", shortLabel: "Reservas", icon: Icons.sales, show: () => true },
+    { id: "messages", label: "Mensajes", shortLabel: "Mensajes", icon: Icons.messages, show: () => true },
+    { id: "news", label: "Noticias", shortLabel: "Noticias", icon: Icons.news, show: (r) => r === "admin" || r === "support" },
   ];
   return items.filter((item) => item.show(role));
 }
