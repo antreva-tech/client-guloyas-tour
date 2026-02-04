@@ -121,7 +121,16 @@ export function Footer() {
         {/* Copyright */}
         <div className="border-t border-night-border mt-6 sm:mt-8 pt-6 sm:pt-8 text-center">
           <p className="text-night-muted/80 text-xs sm:text-sm">
-            © {currentYear} {t.footer.copyright}
+            © {currentYear}{" "}
+            <a
+              href="https://main-site-omega-mauve.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-brand-sky transition-colors"
+            >
+              Antreva Tech
+            </a>{" "}
+            Todos los derechos reservados.
           </p>
         </div>
       </div>
